@@ -14,8 +14,8 @@ import { StateStorage } from './core/storage.js';
 import { FractalManager, FRACTAL_TYPES, JULIA_PRESETS } from './fractals/index.js';
 import { ColorManager, COLOR_SCHEMES } from './render/colors.js';
 import { UIControls } from './ui/controls.js';
-import { Animator, animateZoom } from './core/animator.js';
-import { isMobileDevice } from './core/device.js';
+import { AnimationOrchestrator, animateZoomWithOrchestrator } from './core/orchestrator.js';
+import { isMobileDevice, getIterationTargets, getDeviceTier } from './core/device.js';
 
 class FlyFractApp {
     constructor() {
@@ -29,7 +29,7 @@ class FlyFractApp {
         this.fractalManager = null;
         this.colorManager = null;
         this.uiControls = null;
-        this.animator = null;
+        this.orchestrator = null;
 
         this.loadingScreen = new LoadingScreen();
         this.errorHandler = new ErrorHandler();
@@ -37,10 +37,8 @@ class FlyFractApp {
 
 
         // Render state
-        this.needsRender = true;
         this.isGesturing = false;
         this.quadBuffer = null;
-        this.lastFrameTime = 0;
     }
 
     /**
@@ -95,7 +93,15 @@ class FlyFractApp {
             this.viewState = new ViewState();
             this.quality = new QualityAdapter();
             this.colorManager = new ColorManager();
-            this.animator = new Animator();
+            this.orchestrator = new AnimationOrchestrator();
+
+            // Configure iteration targets based on device tier
+            const iterationTargets = getIterationTargets();
+            this.orchestrator.setIterationTargets(
+                iterationTargets.gesture,
+                iterationTargets.static
+            );
+            console.log(`Device tier: ${getDeviceTier()}, iterations: gesture=${iterationTargets.gesture}, static=${iterationTargets.static}`);
 
             // Load saved state
             const savedState = this.storage.load();
@@ -268,28 +274,29 @@ class FlyFractApp {
     setupGestures() {
         this.gestures = new GestureController(this.canvas, {
             onPan: (dx, dy) => {
-                this.viewState.pan(dx, dy);
-                this.requestRender();
+                // Buffer gestures for atomic application on next tick
+                this.orchestrator.bufferPan(dx, dy);
             },
 
             onZoom: (scale, x, y) => {
-                this.viewState.zoomAt(scale, x, y);
-                this.requestRender();
+                // Buffer gestures for atomic application on next tick
+                this.orchestrator.bufferZoom(scale, x, y);
             },
 
             onRotate: (angle, x, y) => {
-                this.viewState.rotate(angle, x, y);
-                this.requestRender();
+                // Buffer gestures for atomic application on next tick
+                this.orchestrator.bufferRotation(angle, x, y);
             },
 
             onDoubleTap: (x, y) => {
-                // Animated zoom on double tap
-                animateZoom(
+                // Animated zoom on double tap using unified orchestrator
+                animateZoomWithOrchestrator(
+                    this.orchestrator,
                     this.viewState,
                     this.viewState.zoom * 2.5,
                     x, y,
                     300,
-                    () => this.requestRender()
+                    () => this.orchestrator.requestRender()
                 );
 
                 // For Julia sets, also cycle the preset
@@ -300,6 +307,7 @@ class FlyFractApp {
 
             onGestureStart: () => {
                 this.isGesturing = true;
+                this.orchestrator.setGesturing(true);
                 this.quality.onGestureStart();
                 // Show UI if it was hidden (photo mode)
                 if (this.uiControls && this.uiControls.allHidden) {
@@ -311,10 +319,14 @@ class FlyFractApp {
 
             onGestureEnd: () => {
                 this.isGesturing = false;
+                this.orchestrator.setGesturing(false);
                 this.quality.onGestureEnd();
-                this.requestRender();
+                this.orchestrator.requestRender();
             }
-        });
+        }, this.orchestrator);
+
+        // Set the orchestrator on gestures controller
+        this.gestures.setOrchestrator(this.orchestrator);
     }
 
     /**
@@ -453,36 +465,19 @@ class FlyFractApp {
     }
 
     /**
-     * Request a render
+     * Request a render (legacy - now delegates to orchestrator)
      */
     requestRender() {
-        this.needsRender = true;
+        this.orchestrator.requestRender();
     }
 
     /**
-     * Start the render loop
+     * Start the unified render loop via orchestrator
      */
     startRenderLoop() {
-        this.lastFrameTime = performance.now();
-        requestAnimationFrame(this.tick.bind(this));
-    }
-
-    /**
-     * Main render tick
-     */
-    tick(timestamp) {
-        const frameTime = timestamp - this.lastFrameTime;
-        this.lastFrameTime = timestamp;
-
-        // Update quality based on frame time
-        this.quality.update(frameTime);
-
-        if (this.needsRender || this.isGesturing) {
-            this.render();
-            this.needsRender = this.isGesturing;
-        }
-
-        requestAnimationFrame(this.tick.bind(this));
+        // Initialize orchestrator with view state and render callback
+        this.orchestrator.init(this.viewState, () => this.render());
+        this.orchestrator.start();
     }
 
     /**
@@ -490,16 +485,16 @@ class FlyFractApp {
      */
     render() {
         const gl = this.gl;
-        const quality = this.quality.getQuality();
 
         // Get current program
         const { program, uniforms } = this.fractalManager.getCurrent();
         gl.useProgram(program);
 
-        // Resize canvas if needed
+        // Canvas ALWAYS at full resolution - never changes during gestures
+        // This eliminates visible flicker on gesture start/end
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const width = Math.floor(this.canvas.clientWidth * dpr * quality);
-        const height = Math.floor(this.canvas.clientHeight * dpr * quality);
+        const width = Math.floor(this.canvas.clientWidth * dpr);
+        const height = Math.floor(this.canvas.clientHeight * dpr);
 
         if (this.canvas.width !== width || this.canvas.height !== height) {
             this.canvas.width = width;
@@ -512,7 +507,10 @@ class FlyFractApp {
 
         // Get uniforms from view state
         const viewUniforms = this.viewState.getUniforms();
-        const maxIter = this.viewState.getMaxIterations(this.isGesturing);
+
+        // Use orchestrator's smoothed iterations for invisible gesture transitions
+        // This smoothly interpolates between gesture and static iteration counts
+        const maxIter = this.orchestrator.getIterations();
 
         // Set uniforms
         gl.uniform2f(uniforms.u_resolution, width, height);

@@ -6,9 +6,10 @@
 import { isMobileDevice } from '../core/device.js';
 
 export class GestureController {
-    constructor(element, callbacks) {
+    constructor(element, callbacks, orchestrator = null) {
         this.element = element;
         this.callbacks = callbacks;
+        this.orchestrator = orchestrator;
         this.isMobile = isMobileDevice();
 
         // Touch tracking
@@ -30,7 +31,7 @@ export class GestureController {
         this.lastTapPos = { x: 0, y: 0 };
         this.doubleTapCooldown = false;
 
-        // Momentum animation
+        // Momentum animation (only used as fallback if no orchestrator)
         this.momentumFrame = null;
 
         // Mouse state
@@ -38,6 +39,13 @@ export class GestureController {
         this.mouseButton = 0; // 0 = left, 2 = right
 
         this.bindEvents();
+    }
+
+    /**
+     * Set the orchestrator (can be set after construction)
+     */
+    setOrchestrator(orchestrator) {
+        this.orchestrator = orchestrator;
     }
 
     bindEvents() {
@@ -314,6 +322,17 @@ export class GestureController {
     startMomentum() {
         this.state = 'momentum';
 
+        // Use orchestrator if available (unified animation loop)
+        if (this.orchestrator) {
+            this.orchestrator.startMomentum(
+                this.velocity.x,
+                this.velocity.y,
+                () => this.endGesture()
+            );
+            return;
+        }
+
+        // Fallback: run our own RAF loop (for backwards compatibility)
         const friction = 0.94;
         const minVelocity = 0.5;
 
