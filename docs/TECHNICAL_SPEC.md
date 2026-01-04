@@ -26,8 +26,8 @@
 │  ┌───────────────────────────▼─────────────────────────────┐    │
 │  │                   Render Controller                     │    │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │    │
-│  │  │ View State  │  │  Quality    │  │   Progressive   │  │    │
-│  │  │  Manager    │  │  Adapter    │  │   Refinement    │  │    │
+│  │  │ View State  │  │  Quality    │  │  Animation      │  │    │
+│  │  │  Manager    │  │  Adapter    │  │  Orchestrator   │  │    │
 │  │  └─────────────┘  └─────────────┘  └─────────────────┘  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                              │                                  │
@@ -426,9 +426,13 @@ checkDoubleTap(touch) {
 ```javascript
 class QualityAdapter {
     constructor() {
-        this.currentQuality = 1.0;  // 1.0 = full resolution
+        this.quality = 1.0;
+        this.targetQuality = 1.0;
         this.isGesturing = false;
         this.frameTimeHistory = [];
+        this.gestureQuality = 0.75;  // Quality during gestures
+        this.staticQuality = 1.0;     // Quality when static
+        this.recoveryRate = 0.05;     // Quality recovery rate
     }
 
     // Called each frame
@@ -438,80 +442,46 @@ class QualityAdapter {
             this.frameTimeHistory.shift();
         }
 
-        const avgFrameTime = this.frameTimeHistory.reduce((a,b) => a+b, 0) / this.frameTimeHistory.length;
+        if (!this.isGesturing) {
+            // Gradually recover quality
+            if (this.quality < this.targetQuality) {
+                this.quality = Math.min(this.targetQuality, this.quality + this.recoveryRate);
+            }
 
-        // Target: 16.67ms (60fps)
-        if (avgFrameTime > 20 && this.currentQuality > 0.25) {
-            this.currentQuality *= 0.9;
-        } else if (avgFrameTime < 12 && this.currentQuality < 1.0) {
-            this.currentQuality *= 1.1;
+            // Adaptive quality based on frame time (target 16.67ms for 60fps)
+            const avgFrameTime = this.getAverageFrameTime();
+            if (avgFrameTime > 25 && this.quality > 0.25) {
+                this.quality *= 0.95;  // Reduce if struggling
+            } else if (avgFrameTime < 10 && this.quality < this.staticQuality) {
+                this.quality *= 1.05;  // Increase if performing well
+            }
+            this.quality = Math.max(0.25, Math.min(1.0, this.quality));
         }
-
-        return Math.min(1.0, Math.max(0.25, this.currentQuality));
+        return this.quality;
     }
 
     onGestureStart() {
         this.isGesturing = true;
-        this.currentQuality = 0.5; // Immediately drop quality
+        this.targetQuality = this.gestureQuality;
+        this.quality = this.gestureQuality;
     }
 
     onGestureEnd() {
         this.isGesturing = false;
-        // Quality will gradually recover via update()
+        this.targetQuality = this.staticQuality;
     }
 }
 ```
 
-#### 2. Progressive Refinement
+**Note**: The system uses adaptive quality management rather than progressive refinement. QualityAdapter dynamically adjusts rendering resolution based on frame time, providing smooth performance while maintaining visual quality.
+
+#### 2. Resolution Scaling
 
 ```javascript
-class ProgressiveRenderer {
-    constructor(gl, fractalShader) {
-        this.gl = gl;
-        this.shader = fractalShader;
-        this.refinementLevel = 0;
-        this.maxRefinement = 4;
-    }
-
-    startRefinement(viewState) {
-        this.refinementLevel = 0;
-        this.renderLevel(viewState);
-    }
-
-    renderLevel(viewState) {
-        // Quality multiplier: 0.25 → 0.5 → 0.75 → 1.0
-        const quality = 0.25 + (this.refinementLevel / this.maxRefinement) * 0.75;
-
-        // Iteration multiplier: 0.5 → 0.75 → 0.9 → 1.0
-        const iterMult = 0.5 + (this.refinementLevel / this.maxRefinement) * 0.5;
-
-        this.render(viewState, quality, iterMult);
-
-        if (this.refinementLevel < this.maxRefinement) {
-            this.refinementLevel++;
-            // Use idle callback for progressive refinement
-            requestIdleCallback(() => this.renderLevel(viewState), { timeout: 100 });
-        }
-    }
-}
-```
-
-#### 3. Resolution Scaling
-
-```javascript
-function getOptimalResolution(devicePixelRatio, performanceLevel) {
-    // performanceLevel: 0 (low) to 1 (high)
-    const baseScale = 0.5 + performanceLevel * 0.5;
-
-    // On high-DPR devices, don't render at full DPR
-    const maxDPR = 2.0;
-    const effectiveDPR = Math.min(devicePixelRatio, maxDPR);
-
-    return {
-        width: Math.floor(window.innerWidth * effectiveDPR * baseScale),
-        height: Math.floor(window.innerHeight * effectiveDPR * baseScale)
-    };
-}
+// Resolution is dynamically adjusted by QualityAdapter based on performance
+// Canvas resolution = clientWidth * devicePixelRatio * qualityFactor
+// devicePixelRatio is capped at 2.0 for performance
+// QualityAdapter adjusts qualityFactor (0.25 to 1.0) based on frame time
 ```
 
 ### Memory Management
@@ -955,14 +925,33 @@ window.addEventListener('popstate', e => {
 history.pushState(null, '', location.href);
 ```
 
-### Performance Tiers
+### Device-Based Performance Optimization
+
+The system uses device detection to determine appropriate iteration counts:
 
 ```javascript
-function detectPerformanceTier() {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl');
+export function getDeviceTier() {
+    const memory = navigator.deviceMemory || 4;
+    if (memory >= 6) return 'high';
+    if (memory >= 4) return 'mid';
+    return 'low';
+}
 
-    if (!gl) return 'low';
+export function getIterationTargets() {
+    const tier = getDeviceTier();
+    switch (tier) {
+        case 'high':
+            return { gesture: 150, static: 400 };
+        case 'mid':
+            return { gesture: 100, static: 300 };
+        case 'low':
+        default:
+            return { gesture: 75, static: 200 };
+    }
+}
+```
+
+**Note**: Performance tier detection is simplified and uses device memory as the primary indicator. The system does not use complex performance monitoring or tier-based resolution scaling as originally planned.
 
     const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
     const renderer = debugInfo ?
@@ -987,15 +976,15 @@ function detectPerformanceTier() {
 }
 ```
 
-### Default Settings by Tier
+### Default Settings by Tier (Actual Implementation)
 
-| Setting | Low | Medium | High |
-|---------|-----|--------|------|
-| Resolution Scale | 0.5 | 0.75 | 1.0 |
-| Max Iterations | 200 | 500 | 1000 |
-| Gesture Iterations | 50 | 100 | 200 |
-| Progressive Steps | 2 | 3 | 4 |
-| Anti-aliasing | Off | FXAA | 2x SSAA |
+| Setting | Low | Mid | High |
+|---------|-----|-----|------|
+| Gesture Iterations | 75 | 100 | 120-150 |
+| Static Iterations | 200 | 300 | 400 |
+| Quality Adaptation | Dynamic via QualityAdapter | Dynamic via QualityAdapter | Dynamic via QualityAdapter |
+
+**Note**: The system uses simplified device tier detection (based on memory) and adaptive quality management via QualityAdapter. Progressive refinement and tier-based resolution scaling were removed in favor of a simpler, more maintainable approach.
 
 ### PWA Configuration
 
@@ -1423,36 +1412,12 @@ vec3 getColor(float t, float offset) {
 
 ### Performance Benchmarks
 
-```javascript
-class PerformanceMonitor {
-    constructor() {
-        this.frameTimes = [];
-        this.lastTime = 0;
-    }
+**Performance Targets**:
+- Smooth 60fps during gestures (maintained via adaptive quality)
+- Frame time: Target <16.67ms for 60fps
+- QualityAdapter adjusts resolution dynamically to maintain performance
 
-    frame(timestamp) {
-        if (this.lastTime) {
-            this.frameTimes.push(timestamp - this.lastTime);
-            if (this.frameTimes.length > 60) this.frameTimes.shift();
-        }
-        this.lastTime = timestamp;
-    }
-
-    getStats() {
-        const sorted = [...this.frameTimes].sort((a,b) => a-b);
-        return {
-            fps: 1000 / (this.frameTimes.reduce((a,b) => a+b, 0) / this.frameTimes.length),
-            p95: sorted[Math.floor(sorted.length * 0.95)],
-            p99: sorted[Math.floor(sorted.length * 0.99)],
-        };
-    }
-}
-```
-
-**Targets**:
-- Median FPS during gesture: >55 fps
-- P95 frame time: <20ms
-- P99 frame time: <33ms (no double-frame drops)
+**Note**: The system uses QualityAdapter for adaptive quality management rather than a separate PerformanceMonitor class. Frame time tracking is integrated into QualityAdapter for simplicity.
 
 ---
 

@@ -96,11 +96,19 @@ FlyFract removes the technical barriers that have traditionally separated users 
 
 ### Phase 2: Expansion Fractals (Post-v1)
 
-4. **Newton Fractals** - Colorful, educational value
-5. **Tricorn/Multibrot** - Variation on classic theme
-6. **Barnsley Fern** - Different type (IFS), organic shapes
-7. **Sierpinski Triangle/Carpet** - Classic, geometric
-8. **Koch Snowflake** - Recognizable, educational
+All 7 fractals are currently implemented:
+1. Mandelbrot Set ✅
+2. Julia Sets ✅
+3. Burning Ship Fractal ✅
+4. Tricorn ✅
+5. Newton Fractals ✅
+6. Phoenix Fractal ✅
+7. Lyapunov Fractal ✅
+
+Future expansion possibilities:
+- **Barnsley Fern** - Different type (IFS), organic shapes
+- **Sierpinski Triangle/Carpet** - Classic, geometric
+- **Koch Snowflake** - Recognizable, educational
 
 ### Fractal Selection Criteria
 - **Performance**: Must render smoothly on mobile devices (target: 60fps)
@@ -128,38 +136,34 @@ FlyFract removes the technical barriers that have traditionally separated users 
 - **Loading States**: Elegant loading animations, no jarring transitions
 
 #### 4.3 Fractal Selection
-- **Simple Swipeable Cards**: Horizontal swipe to switch between fractals
-- **Preview Thumbnails**: Visual preview of each fractal type
-- **Smooth Transitions**: Elegant cross-fade between fractals
-- **Current Fractal Indicator**: Clear indication of active fractal
+- **Button-Based Selector**: Tap button to cycle through fractal types
+- **Preview Thumbnails**: Visual thumbnail preview for each fractal type
+- **Current Fractal Indicator**: Shows current fractal name and thumbnail icon
+- **7 Fractal Types**: Mandelbrot, Julia Sets, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov
 
 #### 4.4 Zoom Level Indicator
-- **Visual Feedback**: Subtle but clear indication of zoom level
-- **Format**: Scientific notation with × symbol (e.g., "1.2×10^8")
-- **Position**: Non-intrusive, elegant placement (top-right, respecting safe area)
+- **Status**: Not currently implemented in the UI (may be added in future versions)
 
 ### P1 - Important (Should Have for Launch)
 
-#### 4.5 Share Functionality
-- **Screenshot Capture**: One-tap screenshot with current view
-- **Coordinate Saving**: Save interesting locations for return
-- **Share Sheet**: Native iOS/Android share integration
-- **Metadata**: Optionally include zoom level and fractal type
+#### 4.5 Photo Mode
+- **Hide UI**: Photo button to hide all UI elements for clean viewing
+- **Touch to Restore**: Tap screen to restore UI after hiding
+- **Screenshot Ready**: Allows users to take screenshots without UI elements
 
 #### 4.6 Color Scheme Selection
-- **3-5 Presets**: Beautiful, curated color maps
-- **Quick Switcher**: Easy access without leaving exploration
-- **Examples**: Classic blue/purple, fiery orange/red, cool green/cyan, monochrome
+- **8 Color Palettes**: Cosmic (default), Inferno, Ocean, Electric, Rainbow, Fire, Ice, Monochrome
+- **Quick Switcher**: Tap button to cycle through color schemes
+- **State Persistence**: Current color scheme saved and restored on next visit
 
 #### 4.7 Reset/Home Button
-- **Reset View**: Return to default starting position
-- **Clear UI**: Floating action button or subtle gesture
-- **Confirmation**: Optional confirmation to prevent accidental resets
+- **Status**: Not currently implemented (may be added in future versions)
 
 #### 4.8 Performance Optimization
-- **Adaptive Iteration**: Lower iterations during fast gestures, increase when still
-- **Progressive Rendering**: Show low-res quickly, refine gradually
+- **Adaptive Quality**: QualityAdapter adjusts rendering quality based on frame time
+- **Device-Based Iterations**: Iteration counts based on device tier (low/mid/high)
 - **Memory Management**: Efficient handling of zoom level changes
+- **Note**: Progressive refinement system was removed in favor of simpler adaptive quality
 
 ### P2 - Nice to Have (Post-Launch or v1.1)
 

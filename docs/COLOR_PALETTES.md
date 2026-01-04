@@ -1,6 +1,6 @@
 # FlyFract Color Palettes
 
-FlyFract supports **9 color palettes** that transform the fractal visualization with different color schemes. All palettes use a procedural cosine gradient formula: `a + b * cos(2π(c*t + d))`
+FlyFract supports **8 color palettes** that transform the fractal visualization with different color schemes. All palettes use a procedural cosine gradient formula: `a + b * cos(2π(c*t + d))`
 
 ## Available Palettes
 
@@ -30,7 +30,7 @@ FlyFract supports **9 color palettes** that transform the fractal visualization 
 
 ### 5. **Rainbow**
 - **ID**: `rainbow`
-- **Description**: Full spectrum rainbow gradient
+- **Description**: Full spectrum rainbow gradient using HSL color space
 - **Best for**: Colorful, vibrant exploration
 - **Color Range**: Full spectrum from red to violet
 
@@ -51,11 +51,6 @@ FlyFract supports **9 color palettes** that transform the fractal visualization 
 - **Description**: Grayscale gradient, black to white
 - **Best for**: Classic, minimalist aesthetic, color-blind friendly
 - **Color Range**: Black → Gray → White
-
-### 9. **Rainbow** (Alternative)
-- **ID**: `rainbow`
-- **Description**: Full spectrum rainbow
-- **Note**: Currently defined but may be similar to other schemes
 
 ## Technical Details
 
