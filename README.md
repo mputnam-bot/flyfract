@@ -2,7 +2,7 @@
 
 **Explore infinite fractal beauty with intuitive touch gestures**
 
-FlyFract is a mobile-first web application that transforms fractal mathematics into an immersive, meditative exploration experience. Discover infinity at your fingertips with smooth, real-time rendering powered by WebGL.
+FlyFract is a mobile-first web application that transforms fractal mathematics into an immersive, meditative exploration experience. Discover infinity at your fingertips with smooth, real-time rendering powered by WebGL.  This was implemented as a test of coding with Cursor and Claude Code with Opus 4.5 - please forgive errors and omissions.
 
 ![FlyFract](thumbnails/mandelbrot.jpeg)
 
@@ -69,7 +69,7 @@ php -S localhost:8000
 - **F**: Switch to next fractal type
 - **C**: Switch to next color scheme
 - **R**: Reset view to default
-- **H**: Toggle UI visibility (photo mode)
+- **P**: Toggle UI visibility (photo mode)
 
 ## Supported Fractals
 
@@ -137,7 +137,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is open source. Please check the repository for license details.
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 

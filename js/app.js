@@ -145,6 +145,9 @@ class FlyFractApp {
             // Setup mouse movement handler for desktop
             this.setupMouseMovement();
 
+            // Setup keyboard controls for desktop
+            this.setupKeyboardControls();
+
             // Prevent default touch behaviors
             this.preventDefaults();
 
@@ -419,6 +422,101 @@ class FlyFractApp {
                 }
             });
         }
+    }
+
+    /**
+     * Setup keyboard controls for desktop
+     * Arrow Keys: Pan, +/-: Zoom, F: Fractal, C: Color, R: Reset, P: Photo mode
+     */
+    setupKeyboardControls() {
+        if (isMobileDevice()) return;
+
+        const PAN_AMOUNT = 50; // pixels per keypress
+        const ZOOM_FACTOR = 1.2;
+
+        document.addEventListener('keydown', (e) => {
+            // Ignore if user is typing in an input field
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+
+            // Get screen center for zoom operations
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            switch (e.key) {
+                // Arrow keys - Pan
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.viewState.pan(0, -PAN_AMOUNT);
+                    this.requestRender();
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.viewState.pan(0, PAN_AMOUNT);
+                    this.requestRender();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    this.viewState.pan(-PAN_AMOUNT, 0);
+                    this.requestRender();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    this.viewState.pan(PAN_AMOUNT, 0);
+                    this.requestRender();
+                    break;
+
+                // +/= key - Zoom in
+                case '+':
+                case '=':
+                    e.preventDefault();
+                    this.viewState.zoomAt(ZOOM_FACTOR, centerX, centerY);
+                    this.requestRender();
+                    break;
+
+                // - key - Zoom out
+                case '-':
+                case '_':
+                    e.preventDefault();
+                    this.viewState.zoomAt(1 / ZOOM_FACTOR, centerX, centerY);
+                    this.requestRender();
+                    break;
+
+                // F - Next fractal
+                case 'f':
+                case 'F':
+                    e.preventDefault();
+                    this.nextFractal();
+                    break;
+
+                // C - Next color scheme
+                case 'c':
+                case 'C':
+                    e.preventDefault();
+                    this.nextColor();
+                    break;
+
+                // R - Reset view
+                case 'r':
+                case 'R':
+                    e.preventDefault();
+                    this.resetView();
+                    this.requestRender();
+                    break;
+
+                // P - Toggle photo mode (hide/show UI)
+                case 'p':
+                case 'P':
+                    e.preventDefault();
+                    if (this.uiControls.allHidden) {
+                        this.uiControls.showAll();
+                    } else {
+                        this.uiControls.hideAll();
+                    }
+                    break;
+            }
+        });
     }
 
     /**

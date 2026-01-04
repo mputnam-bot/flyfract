@@ -38,6 +38,10 @@ export class GestureController {
         this.isMouseDown = false;
         this.mouseButton = 0; // 0 = left, 2 = right
 
+        // Safari/Mac trackpad gesture state
+        this.lastGestureRotation = 0;
+        this.lastGestureScale = 1;
+
         this.bindEvents();
     }
 
@@ -58,10 +62,10 @@ export class GestureController {
         el.addEventListener('touchend', this.onTouchEnd.bind(this), opts);
         el.addEventListener('touchcancel', this.onTouchCancel.bind(this), opts);
 
-        // Prevent Safari gestures
-        el.addEventListener('gesturestart', e => e.preventDefault(), opts);
-        el.addEventListener('gesturechange', e => e.preventDefault(), opts);
-        el.addEventListener('gestureend', e => e.preventDefault(), opts);
+        // Safari/Mac trackpad gesture events (rotation and pinch)
+        el.addEventListener('gesturestart', this.onGestureStart.bind(this), opts);
+        el.addEventListener('gesturechange', this.onGestureChange.bind(this), opts);
+        el.addEventListener('gestureend', this.onGestureEnd.bind(this), opts);
 
         // Mouse events (desktop)
         if (!this.isMobile) {
@@ -385,8 +389,8 @@ export class GestureController {
             this.momentumFrame = null;
         }
 
-        // Left button = pan, Right button = zoom (optional, but let's use left for pan)
-        if (e.button === 0) { // Left button
+        // Left button = pan, Right button = rotate
+        if (e.button === 0) { // Left button - pan
             this.lastCenter = { x: e.clientX, y: e.clientY };
             this.lastMoveTime = performance.now();
             this.velocity = { x: 0, y: 0 };
@@ -395,30 +399,52 @@ export class GestureController {
             if (this.callbacks.onGestureStart) {
                 this.callbacks.onGestureStart();
             }
+        } else if (e.button === 2) { // Right button - rotate
+            this.lastCenter = { x: e.clientX, y: e.clientY };
+            this.state = 'rotate';
+
+            if (this.callbacks.onGestureStart) {
+                this.callbacks.onGestureStart();
+            }
         }
     }
 
     onMouseMove(e) {
-        if (!this.isMouseDown || this.state !== 'pan') return;
+        if (!this.isMouseDown) return;
+        if (this.state !== 'pan' && this.state !== 'rotate') return;
 
         e.preventDefault();
 
         const dx = e.clientX - this.lastCenter.x;
         const dy = e.clientY - this.lastCenter.y;
 
-        // Calculate velocity for momentum
-        const now = performance.now();
-        const dt = now - this.lastMoveTime;
-        if (dt > 0 && dt < 100) {
-            const newVelX = (dx / dt) * 16;
-            const newVelY = (dy / dt) * 16;
-            this.velocity.x = this.velocity.x * 0.5 + newVelX * 0.5;
-            this.velocity.y = this.velocity.y * 0.5 + newVelY * 0.5;
-        }
-        this.lastMoveTime = now;
+        if (this.state === 'pan') {
+            // Calculate velocity for momentum
+            const now = performance.now();
+            const dt = now - this.lastMoveTime;
+            if (dt > 0 && dt < 100) {
+                const newVelX = (dx / dt) * 16;
+                const newVelY = (dy / dt) * 16;
+                this.velocity.x = this.velocity.x * 0.5 + newVelX * 0.5;
+                this.velocity.y = this.velocity.y * 0.5 + newVelY * 0.5;
+            }
+            this.lastMoveTime = now;
 
-        if (this.callbacks.onPan) {
-            this.callbacks.onPan(dx, dy);
+            if (this.callbacks.onPan) {
+                this.callbacks.onPan(dx, dy);
+            }
+        } else if (this.state === 'rotate') {
+            // Rotate based on vertical drag
+            // Drag up = clockwise (positive angle), drag down = counter-clockwise (negative)
+            const rotationSensitivity = 0.01; // radians per pixel
+            const angle = -dy * rotationSensitivity; // negative because screen Y is inverted
+
+            if (this.callbacks.onRotate) {
+                // Rotate around screen center
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                this.callbacks.onRotate(angle, centerX, centerY);
+            }
         }
 
         this.lastCenter = { x: e.clientX, y: e.clientY };
@@ -445,6 +471,9 @@ export class GestureController {
             } else {
                 this.endGesture();
             }
+        } else if (this.state === 'rotate') {
+            // Rotation complete, no momentum for rotation
+            this.endGesture();
         } else {
             this.endGesture();
         }
@@ -465,12 +494,23 @@ export class GestureController {
             this.callbacks.onGestureStart();
         }
 
-        // Zoom based on wheel delta
-        // Negative deltaY = scroll up = zoom in
-        // Positive deltaY = scroll down = zoom out
-        const delta = e.deltaY;
-        const zoomFactor = delta > 0 ? 0.9 : 1.1;
-        
+        let zoomFactor;
+
+        // Chrome/Mac trackpad pinch: ctrlKey is true, deltaY is the pinch amount
+        if (e.ctrlKey) {
+            // Trackpad pinch - use continuous zoom based on delta
+            // deltaY is negative for pinch-out (zoom in), positive for pinch-in (zoom out)
+            const pinchSensitivity = 0.01;
+            zoomFactor = 1 - (e.deltaY * pinchSensitivity);
+            // Clamp to reasonable range
+            zoomFactor = Math.max(0.5, Math.min(2, zoomFactor));
+        } else {
+            // Regular scroll wheel - use discrete zoom steps
+            // Negative deltaY = scroll up = zoom in
+            // Positive deltaY = scroll down = zoom out
+            zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        }
+
         // Zoom centered on mouse position
         if (this.callbacks.onZoom) {
             this.callbacks.onZoom(zoomFactor, e.clientX, e.clientY);
@@ -492,6 +532,62 @@ export class GestureController {
         // Zoom in centered on click position
         if (this.callbacks.onDoubleTap) {
             this.callbacks.onDoubleTap(e.clientX, e.clientY);
+        }
+    }
+
+    // ========== Safari/Mac Trackpad Gesture Handlers ==========
+
+    onGestureStart(e) {
+        e.preventDefault();
+
+        // Reset tracking values
+        this.lastGestureRotation = e.rotation || 0;
+        this.lastGestureScale = e.scale || 1;
+
+        if (this.callbacks.onGestureStart) {
+            this.callbacks.onGestureStart();
+        }
+    }
+
+    onGestureChange(e) {
+        e.preventDefault();
+
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        // Handle rotation (degrees to radians)
+        if (e.rotation !== undefined) {
+            const rotationDelta = e.rotation - this.lastGestureRotation;
+            const angleRadians = (rotationDelta * Math.PI) / 180;
+
+            if (Math.abs(angleRadians) > 0.001 && this.callbacks.onRotate) {
+                this.callbacks.onRotate(angleRadians, centerX, centerY);
+            }
+
+            this.lastGestureRotation = e.rotation;
+        }
+
+        // Handle pinch zoom
+        if (e.scale !== undefined) {
+            const scaleDelta = e.scale / this.lastGestureScale;
+
+            if (Math.abs(scaleDelta - 1) > 0.001 && this.callbacks.onZoom) {
+                this.callbacks.onZoom(scaleDelta, centerX, centerY);
+            }
+
+            this.lastGestureScale = e.scale;
+        }
+    }
+
+    onGestureEnd(e) {
+        e.preventDefault();
+
+        // Reset tracking values
+        this.lastGestureRotation = 0;
+        this.lastGestureScale = 1;
+
+        if (this.callbacks.onGestureEnd) {
+            this.callbacks.onGestureEnd();
         }
     }
 }
