@@ -73,6 +73,78 @@ export class ErrorHandler {
             'Failed to load required resources. Please check your connection and try again.'
         );
     }
+
+    /**
+     * Show WebGL context lost error
+     */
+    showContextLostError() {
+        this.show(
+            'Graphics Context Lost',
+            'The graphics system was interrupted. This usually happens when switching apps or tabs. The page will attempt to recover automatically.'
+        );
+    }
+
+    /**
+     * Show security error (e.g., blocked by CSP)
+     */
+    showSecurityError(error) {
+        console.error('Security error:', error);
+        this.show(
+            'Security Error',
+            'A security policy prevented the application from loading. Please contact support if this persists.'
+        );
+    }
+}
+
+/**
+ * Setup global error boundary
+ * Catches unhandled errors and provides graceful degradation
+ */
+export function setupGlobalErrorBoundary(errorHandler) {
+    // Catch unhandled promise rejections
+    window.addEventListener('unhandledrejection', (event) => {
+        console.error('Unhandled promise rejection:', event.reason);
+
+        // Don't show error UI for minor issues
+        if (event.reason?.message?.includes('localStorage')) {
+            // Storage errors are non-fatal
+            event.preventDefault();
+            return;
+        }
+
+        // Check for CSP violations
+        if (event.reason?.message?.includes('Content Security Policy')) {
+            errorHandler.showSecurityError(event.reason);
+            event.preventDefault();
+            return;
+        }
+    });
+
+    // Catch global errors
+    window.addEventListener('error', (event) => {
+        console.error('Global error:', event.error);
+
+        // Shader compilation errors
+        if (event.message?.includes('shader') || event.message?.includes('GLSL')) {
+            errorHandler.showShaderError(event.error);
+            event.preventDefault();
+            return;
+        }
+    });
+
+    // Catch CSP violations
+    document.addEventListener('securitypolicyviolation', (event) => {
+        console.error('CSP violation:', {
+            blockedURI: event.blockedURI,
+            violatedDirective: event.violatedDirective,
+            originalPolicy: event.originalPolicy
+        });
+
+        // Only show error for critical violations
+        if (event.violatedDirective.includes('script-src')) {
+            errorHandler.showSecurityError(new Error(`Script blocked: ${event.blockedURI}`));
+        }
+    });
 }
 
 /**

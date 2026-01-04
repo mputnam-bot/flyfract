@@ -1,0 +1,23 @@
+# Security Policy for FlyFract
+# https://securitytxt.org/
+
+# Contact for reporting security vulnerabilities
+Contact: https://github.com/mputnam/flyfract/security/advisories/new
+
+# Encryption key for secure communication (optional)
+# Encryption: https://example.com/.well-known/pgp-key.txt
+
+# Policy document
+Policy: https://github.com/mputnam/flyfract/blob/main/docs/SECURITY_REVIEW.md
+
+# Acknowledgments page (optional)
+# Acknowledgments: https://example.com/security/acknowledgments
+
+# Preferred languages for communication
+Preferred-Languages: en
+
+# Expiration date for this security.txt (1 year from creation)
+Expires: 2027-01-04T00:00:00.000Z
+
+# Canonical URL for this security.txt
+Canonical: https://flyfract.vercel.app/.well-known/security.txt

@@ -9,7 +9,7 @@ import { QualityAdapter } from './render/quality.js';
 import { ViewState } from './core/state.js';
 import { GestureController } from './gestures/controller.js';
 import { LoadingScreen } from './core/loading.js';
-import { ErrorHandler, checkWebGLSupport } from './core/errors.js';
+import { ErrorHandler, checkWebGLSupport, setupGlobalErrorBoundary } from './core/errors.js';
 import { StateStorage } from './core/storage.js';
 import { FractalManager, FRACTAL_TYPES, JULIA_PRESETS } from './fractals/index.js';
 import { ColorManager, COLOR_SCHEMES } from './render/colors.js';
@@ -34,6 +34,9 @@ class FlyFractApp {
         this.loadingScreen = new LoadingScreen();
         this.errorHandler = new ErrorHandler();
         this.storage = new StateStorage();
+
+        // Setup global error boundary for security and stability
+        setupGlobalErrorBoundary(this.errorHandler);
 
 
         // Render state

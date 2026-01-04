@@ -3,6 +3,8 @@
  * Persists user preferences using LocalStorage
  */
 
+import { validateStoredState, VALID_FRACTALS, VALID_COLORS } from './security.js';
+
 export class StateStorage {
     constructor() {
         this.storageKey = 'flyfract-state';
@@ -15,10 +17,18 @@ export class StateStorage {
      */
     save(state) {
         try {
+            // Validate before saving
+            const fractalType = VALID_FRACTALS.includes(state.fractalType)
+                ? state.fractalType
+                : 'mandelbrot';
+            const colorScheme = VALID_COLORS.includes(state.colorScheme)
+                ? state.colorScheme
+                : 'cosmic';
+
             const data = {
                 version: this.version,
-                fractalType: state.fractalType || 'mandelbrot',
-                colorScheme: state.colorScheme || 'cosmic',
+                fractalType,
+                colorScheme,
                 timestamp: Date.now()
             };
 
@@ -39,18 +49,34 @@ export class StateStorage {
             const data = localStorage.getItem(this.storageKey);
             if (!data) return null;
 
+            // Limit data size to prevent DoS
+            if (data.length > 1000) {
+                console.warn('Stored data too large, clearing');
+                this.clear();
+                return null;
+            }
+
             const parsed = JSON.parse(data);
 
+            // Validate the parsed data structure
+            const validated = validateStoredState(parsed);
+            if (!validated) {
+                console.warn('Invalid stored data structure, clearing');
+                this.clear();
+                return null;
+            }
+
             // Version check
-            if (parsed.version !== this.version) {
+            if (validated.version !== this.version) {
                 console.warn('State version mismatch, using defaults');
                 this.clear();
                 return null;
             }
 
-            return parsed;
+            return validated;
         } catch (e) {
             console.warn('Failed to load state:', e);
+            this.clear(); // Clear corrupted data
             return null;
         }
     }
