@@ -16,6 +16,9 @@ export class ViewState {
         // Derived zoom value
         this.zoom = 1.0;
 
+        // Rotation angle in radians
+        this.rotation = 0.0;
+
         // Screen dimensions (updated on resize)
         this.screenWidth = window.innerWidth;
         this.screenHeight = window.innerHeight;
@@ -62,6 +65,18 @@ export class ViewState {
     }
 
     /**
+     * Rotate the view
+     * @param {number} angle - Rotation angle in radians
+     * @param {number} screenX - Screen X coordinate of rotation center
+     * @param {number} screenY - Screen Y coordinate of rotation center
+     */
+    rotate(angle, screenX, screenY) {
+        this.rotation += angle;
+        // Keep rotation in [0, 2π] range
+        this.rotation = ((this.rotation % (2 * Math.PI)) + (2 * Math.PI)) % (2 * Math.PI);
+    }
+
+    /**
      * Zoom centered on a screen point
      * @param {number} factor - Zoom factor (>1 = zoom in)
      * @param {number} screenX - Screen X coordinate
@@ -100,6 +115,7 @@ export class ViewState {
         this.centerY = { hi: 0.0, lo: 0.0 };
         this.zoomLog = 0;
         this.zoom = 1.0;
+        this.rotation = 0.0;
     }
 
     /**
@@ -110,6 +126,7 @@ export class ViewState {
         this.centerY = { hi: centerY, lo: 0.0 };
         this.zoom = zoom;
         this.zoomLog = Math.log2(zoom);
+        this.rotation = 0.0;
     }
 
     /**
@@ -124,6 +141,7 @@ export class ViewState {
                 this.centerY.lo
             ],
             zoom: this.zoom,
+            rotation: this.rotation,
             colorOffset: this.colorOffset
         };
     }

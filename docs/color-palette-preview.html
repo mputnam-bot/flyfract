@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlyFract Color Palette Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+        
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .palette-card {
+            background: #2a2a2a;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        .palette-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .palette-id {
+            font-size: 14px;
+            color: #888;
+            font-family: 'Monaco', monospace;
+            margin-bottom: 15px;
+        }
+        
+        .gradient-preview {
+            width: 100%;
+            height: 80px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .description {
+            font-size: 14px;
+            color: #ccc;
+            margin-top: 10px;
+        }
+        
+        .info {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .info h2 {
+            margin-bottom: 10px;
+        }
+        
+        .info p {
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 FlyFract Color Palettes</h1>
+    
+    <div class="info">
+        <h2>About</h2>
+        <p>FlyFract uses procedural cosine gradients to create smooth, beautiful color transitions. Each palette transforms the fractal visualization with a unique color scheme. The gradient is calculated using: <code>a + b * cos(2π(c*t + d))</code> where t is the smooth iteration count.</p>
+    </div>
+    
+    <div class="palette-grid" id="paletteGrid"></div>
+    
+    <script>
+        const COLOR_SCHEMES = {
+            cosmic: {
+                id: 'cosmic',
+                name: 'Cosmic',
+                description: 'Classic blue-to-purple-to-gold gradient, reminiscent of deep space. Perfect for general exploration.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 1.0, 1.0],
+                d: [0.00, 0.33, 0.67]
+            },
+            inferno: {
+                id: 'inferno',
+                name: 'Inferno',
+                description: 'Fiery orange-red gradient, like flames. Dramatic and high-contrast.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 1.0, 0.5],
+                d: [0.00, 0.10, 0.20]
+            },
+            ocean: {
+                id: 'ocean',
+                name: 'Ocean',
+                description: 'Cool blue-green gradient, like underwater depths. Calming and meditative.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 1.0, 1.0],
+                d: [0.30, 0.20, 0.20]
+            },
+            electric: {
+                id: 'electric',
+                name: 'Electric',
+                description: 'Vibrant cyan-green-yellow gradient. Electric and energetic.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 1.0, 1.0],
+                d: [0.80, 0.90, 0.30]
+            },
+            rainbow: {
+                id: 'rainbow',
+                name: 'Rainbow',
+                description: 'Full spectrum rainbow gradient. Colorful and vibrant.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 1.0, 1.0],
+                d: [0.00, 0.10, 0.20]
+            },
+            fire: {
+                id: 'fire',
+                name: 'Fire',
+                description: 'Warm red-orange-yellow gradient, like flames. Warm and energetic.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [1.0, 0.7, 0.4],
+                d: [0.00, 0.15, 0.20]
+            },
+            ice: {
+                id: 'ice',
+                name: 'Ice',
+                description: 'Cool blue-white gradient, like ice and snow. Cool and serene.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [0.4, 0.7, 1.0],
+                d: [0.20, 0.25, 0.30]
+            },
+            monochrome: {
+                id: 'monochrome',
+                name: 'Monochrome',
+                description: 'Grayscale gradient, black to white. Classic, minimalist, and color-blind friendly.',
+                a: [0.5, 0.5, 0.5],
+                b: [0.5, 0.5, 0.5],
+                c: [0.0, 0.0, 0.0],
+                d: [0.00, 0.00, 0.00]
+            }
+        };
+        
+        // Generate color from palette
+        function palette(t, scheme) {
+            const a = scheme.a;
+            const b = scheme.b;
+            const c = scheme.c;
+            const d = scheme.d;
+            
+            const r = a[0] + b[0] * Math.cos(6.28318 * (c[0] * t + d[0]));
+            const g = a[1] + b[1] * Math.cos(6.28318 * (c[1] * t + d[1]));
+            const bl = a[2] + b[2] * Math.cos(6.28318 * (c[2] * t + d[2]));
+            
+            return {
+                r: Math.max(0, Math.min(1, r)),
+                g: Math.max(0, Math.min(1, g)),
+                b: Math.max(0, Math.min(1, bl))
+            };
+        }
+        
+        // Create gradient preview
+        function createGradient(scheme) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 80;
+            const ctx = canvas.getContext('2d');
+            
+            for (let x = 0; x < canvas.width; x++) {
+                const t = x / canvas.width;
+                const color = palette(t, scheme);
+                ctx.fillStyle = `rgb(${Math.floor(color.r * 255)}, ${Math.floor(color.g * 255)}, ${Math.floor(color.b * 255)})`;
+                ctx.fillRect(x, 0, 1, canvas.height);
+            }
+            
+            return canvas.toDataURL();
+        }
+        
+        // Render palettes
+        const grid = document.getElementById('paletteGrid');
+        
+        Object.values(COLOR_SCHEMES).forEach(scheme => {
+            const card = document.createElement('div');
+            card.className = 'palette-card';
+            
+            const gradientUrl = createGradient(scheme);
+            
+            card.innerHTML = `
+                <div class="palette-name">${scheme.name}</div>
+                <div class="palette-id">ID: ${scheme.id}</div>
+                <div class="gradient-preview" style="background: linear-gradient(to right, 
+                    ${Array.from({length: 10}, (_, i) => {
+                        const t = i / 9;
+                        const color = palette(t, scheme);
+                        return `rgb(${Math.floor(color.r * 255)}, ${Math.floor(color.g * 255)}, ${Math.floor(color.b * 255)})`;
+                    }).join(', ')});"></div>
+                <div class="description">${scheme.description}</div>
+            `;
+            
+            grid.appendChild(card);
+        });
+    </script>
+</body>
+</html>
+

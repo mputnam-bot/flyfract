@@ -11,14 +11,6 @@ uniform vec3 u_colorB;      // Color scheme parameter B
 uniform vec3 u_colorC;      // Color scheme parameter C
 uniform vec3 u_colorD;      // Color scheme parameter D
 
-// Emulated double-precision addition
-vec2 ds_add(vec2 a, vec2 b) {
-    float t1 = a.x + b.x;
-    float e = t1 - a.x;
-    float t2 = ((b.x - e) + (a.x - (t1 - e))) + a.y + b.y;
-    return vec2(t1 + t2, t2 - ((t1 + t2) - t1));
-}
-
 // Color palette - procedural cosine gradient
 vec3 palette(float t) {
     return u_colorA + u_colorB * cos(6.28318 * (u_colorC * t + u_colorD));
@@ -39,26 +31,11 @@ void main() {
     // Map to fractal space
     float scale = 2.0 / u_zoom;
 
-    // Calculate c using emulated double precision for center
+    // Calculate c
     vec2 c = vec2(u_center.x + u_center.y, u_center.z + u_center.w) + rotatedUV * scale;
 
-    // Cardioid check for early exit (main bulb optimization)
-    float cx = c.x - 0.25;
-    float cy2 = c.y * c.y;
-    float q = cx * cx + cy2;
-    if (q * (q + cx) < 0.25 * cy2) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-        return;
-    }
-
-    // Period-2 bulb check
-    float cx2 = c.x + 1.0;
-    if (cx2 * cx2 + cy2 < 0.0625) {
-        gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
-        return;
-    }
-
-    // Mandelbrot iteration
+    // Tricorn iteration: z = (conjugate(z))^2 + c
+    // conjugate(z) = (z.x, -z.y)
     vec2 z = vec2(0.0);
     int iter = 0;
 
@@ -70,7 +47,8 @@ void main() {
 
         if (zx2 + zy2 > 4.0) break;
 
-        z = vec2(zx2 - zy2 + c.x, 2.0 * z.x * z.y + c.y);
+        // Tricorn: use conjugate (negate y before squaring)
+        z = vec2(zx2 - zy2 + c.x, -2.0 * z.x * z.y + c.y);
         iter = i;
     }
 
@@ -78,7 +56,7 @@ void main() {
     if (iter >= u_maxIter - 1) {
         gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
-        // Smooth coloring using escape time algorithm
+        // Smooth coloring
         float zn = z.x * z.x + z.y * z.y;
         float nu = log2(log2(zn) * 0.5);
         float smoothIter = float(iter) + 1.0 - nu;
@@ -89,3 +67,4 @@ void main() {
         gl_FragColor = vec4(color, 1.0);
     }
 }
+
