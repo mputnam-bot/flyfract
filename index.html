@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="description" content="Explore infinite fractal beauty with intuitive touch gestures">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FlyFract</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading FlyFract</div>
+            <div class="loading-progress">
+                <div id="loading-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Screen -->
+    <div id="error-screen" style="display: none;">
+        <div class="error-content">
+            <div class="error-icon">!</div>
+            <h2 id="error-title">Unable to Load</h2>
+            <p id="error-message"></p>
+            <button id="error-retry" onclick="location.reload()">Retry</button>
+        </div>
+    </div>
+
+    <!-- Main Canvas -->
+    <canvas id="fractal-canvas"></canvas>
+
+    <!-- Zoom Indicator -->
+    <div id="zoom-indicator">1x</div>
+
+    <!-- App Entry Point -->
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

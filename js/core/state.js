@@ -1,0 +1,182 @@
+/**
+ * View State Management
+ * Handles fractal coordinates, zoom level, and transformations
+ */
+
+export class ViewState {
+    constructor() {
+        // Center coordinates using emulated double precision
+        // Each component stored as { hi, lo } for extended precision
+        this.centerX = { hi: -0.5, lo: 0.0 };
+        this.centerY = { hi: 0.0, lo: 0.0 };
+
+        // Zoom stored as log2 for smooth interpolation
+        this.zoomLog = 0;
+
+        // Derived zoom value
+        this.zoom = 1.0;
+
+        // Screen dimensions (updated on resize)
+        this.screenWidth = window.innerWidth;
+        this.screenHeight = window.innerHeight;
+
+        // Color offset for animation
+        this.colorOffset = 0.0;
+    }
+
+    /**
+     * Get the actual zoom level
+     */
+    get zoomLevel() {
+        return Math.pow(2, this.zoomLog);
+    }
+
+    /**
+     * Update screen dimensions
+     */
+    setScreenSize(width, height) {
+        this.screenWidth = width;
+        this.screenHeight = height;
+    }
+
+    /**
+     * Convert screen delta to fractal space and pan
+     * @param {number} dx - Screen X delta
+     * @param {number} dy - Screen Y delta
+     */
+    pan(dx, dy) {
+        const minDim = Math.min(this.screenWidth, this.screenHeight);
+        const scale = 2.0 / (this.zoom * minDim);
+
+        // Update center (X increases right, Y increases up in fractal space)
+        const fractalDX = -dx * scale;
+        const fractalDY = dy * scale;
+
+        // Add to emulated double
+        this.centerX = this.dsAdd(this.centerX, { hi: fractalDX, lo: 0 });
+        this.centerY = this.dsAdd(this.centerY, { hi: fractalDY, lo: 0 });
+
+        // Renormalize periodically
+        this.centerX = this.dsRenorm(this.centerX);
+        this.centerY = this.dsRenorm(this.centerY);
+    }
+
+    /**
+     * Zoom centered on a screen point
+     * @param {number} factor - Zoom factor (>1 = zoom in)
+     * @param {number} screenX - Screen X coordinate
+     * @param {number} screenY - Screen Y coordinate
+     */
+    zoomAt(factor, screenX, screenY) {
+        const oldZoom = this.zoom;
+        const minDim = Math.min(this.screenWidth, this.screenHeight);
+
+        // Update zoom
+        this.zoomLog += Math.log2(factor);
+        // Clamp zoom to reasonable range (1x to 10^12x)
+        this.zoomLog = Math.max(0, Math.min(40, this.zoomLog));
+        this.zoom = Math.pow(2, this.zoomLog);
+
+        // Calculate the point in fractal space that should stay fixed
+        const scale = 2.0 / (oldZoom * minDim);
+        const fx = (screenX - this.screenWidth / 2) * scale;
+        const fy = -(screenY - this.screenHeight / 2) * scale;
+
+        // Adjust center to keep that point stationary
+        const adjust = 1 - 1 / factor;
+        this.centerX = this.dsAdd(this.centerX, { hi: fx * adjust, lo: 0 });
+        this.centerY = this.dsAdd(this.centerY, { hi: fy * adjust, lo: 0 });
+
+        // Renormalize
+        this.centerX = this.dsRenorm(this.centerX);
+        this.centerY = this.dsRenorm(this.centerY);
+    }
+
+    /**
+     * Reset to default view
+     */
+    reset() {
+        this.centerX = { hi: -0.5, lo: 0.0 };
+        this.centerY = { hi: 0.0, lo: 0.0 };
+        this.zoomLog = 0;
+        this.zoom = 1.0;
+    }
+
+    /**
+     * Set view to specific coordinates
+     */
+    setView(centerX, centerY, zoom) {
+        this.centerX = { hi: centerX, lo: 0.0 };
+        this.centerY = { hi: centerY, lo: 0.0 };
+        this.zoom = zoom;
+        this.zoomLog = Math.log2(zoom);
+    }
+
+    /**
+     * Get uniforms for shader
+     */
+    getUniforms() {
+        return {
+            center: [
+                this.centerX.hi,
+                this.centerX.lo,
+                this.centerY.hi,
+                this.centerY.lo
+            ],
+            zoom: this.zoom,
+            colorOffset: this.colorOffset
+        };
+    }
+
+    /**
+     * Calculate max iterations based on zoom level
+     */
+    getMaxIterations(isGesturing = false) {
+        const baseIter = 100 + Math.floor(this.zoomLog * 25);
+        const maxIter = Math.min(1000, baseIter);
+
+        // Reduce iterations during gestures for performance
+        if (isGesturing) {
+            return Math.max(50, Math.floor(maxIter * 0.4));
+        }
+
+        return maxIter;
+    }
+
+    /**
+     * Format zoom level for display
+     */
+    formatZoom() {
+        const zoom = this.zoom;
+        if (zoom < 1000) {
+            return `${zoom.toFixed(1)}x`;
+        }
+
+        const exp = Math.floor(Math.log10(zoom));
+        const mantissa = zoom / Math.pow(10, exp);
+        return `${mantissa.toFixed(1)}×10^${exp}`;
+    }
+
+    // ========== Emulated Double Precision Helpers ==========
+
+    /**
+     * Add two emulated doubles
+     */
+    dsAdd(a, b) {
+        const t1 = a.hi + b.hi;
+        const e = t1 - a.hi;
+        const t2 = ((b.hi - e) + (a.hi - (t1 - e))) + a.lo + b.lo;
+        const hi = t1 + t2;
+        const lo = t2 - (hi - t1);
+        return { hi, lo };
+    }
+
+    /**
+     * Renormalize emulated double to prevent precision loss
+     */
+    dsRenorm(a) {
+        const t = a.hi + a.lo;
+        const e = a.lo - (t - a.hi);
+        return { hi: t, lo: e };
+    }
+}
