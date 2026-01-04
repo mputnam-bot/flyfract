@@ -29,7 +29,12 @@ html, body {
         cursor: grabbing;
     }
 
-    .selector-btn:hover,
+    .fractal-selector:hover,
+    .color-selector:hover {
+        background: rgba(0, 0, 0, 0.75);
+    }
+
+    .fractal-btn:hover,
     .color-btn:hover,
     .info-btn:hover {
         background: rgba(255, 255, 255, 0.15);
@@ -189,22 +194,32 @@ html, body {
     display: none;
 }
 
-/* Photo Button */
+/* Photo Button - matches info button style */
 .photo-btn {
-    width: 40px;
-    height: 40px;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 10px;
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: background 0.2s, opacity 0.3s;
     z-index: 100;
+    padding: 0;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .photo-btn:active {
@@ -212,6 +227,12 @@ html, body {
 }
 
 .photo-btn.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden;
+}
+
+.ui-controls.hidden ~ .photo-btn {
     opacity: 0;
     pointer-events: none;
 }
@@ -252,6 +273,7 @@ body {
 
 .ui-controls.hidden {
     opacity: 0;
+    pointer-events: none;
 }
 
 /* Desktop: Keep UI controls more visible */
@@ -261,7 +283,8 @@ body {
     }
     
     .ui-controls.hidden {
-        opacity: 0.4; /* More visible on desktop when "hidden" */
+        opacity: 0;
+        pointer-events: none;
     }
 }
 
@@ -273,17 +296,25 @@ body {
 .fractal-selector {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
-    padding: 8px;
+    padding: 10px 14px;
+    width: 180px;
+    justify-content: center;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.selector-btn {
-    width: 36px;
-    height: 36px;
+.fractal-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -293,59 +324,65 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: background 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.selector-btn:active {
+.fractal-selector:active {
+    background: rgba(0, 0, 0, 0.85);
+}
+
+.fractal-btn:active {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.selector-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 120px;
-    padding: 0 8px;
+.fractal-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 4px;
+    filter: grayscale(100%) brightness(0.9);
+    opacity: 0.9;
+    pointer-events: none;
+}
+
+.fractal-label {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    flex: 1;
     text-align: center;
-}
-
-.fractal-name {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #fff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    width: 100%;
-}
-
-.fractal-hint {
-    font-size: 0.7rem;
-    color: rgba(255, 255, 255, 0.5);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
+    min-width: 0;
 }
 
 /* Color Selector */
 .color-selector {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
-    padding: 8px 12px;
-    min-width: 140px;
+    padding: 10px 14px;
+    width: 180px;
     justify-content: center;
+    min-height: 44px;
+    cursor: pointer;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .color-btn {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -355,6 +392,14 @@ body {
     justify-content: center;
     cursor: pointer;
     transition: background 0.2s;
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.color-selector:active {
+    background: rgba(0, 0, 0, 0.85);
 }
 
 .color-btn:active {
@@ -362,11 +407,15 @@ body {
 }
 
 .color-label {
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
-    width: 80px;
+    flex: 1;
     text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 /* Info Button */
@@ -376,8 +425,10 @@ body {
     left: 16px;
     top: max(16px, env(safe-area-inset-top));
     left: max(16px, env(safe-area-inset-left));
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
@@ -390,6 +441,9 @@ body {
     cursor: pointer;
     transition: background 0.2s, opacity 0.3s;
     z-index: 100;
+    padding: 0;
+    margin: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .info-btn:active {
@@ -399,6 +453,12 @@ body {
 .ui-controls.hidden ~ .info-btn {
     opacity: 0;
     pointer-events: none;
+}
+
+.info-btn.hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    visibility: hidden;
 }
 
 /* Info Overlay */
@@ -477,12 +537,14 @@ body {
     background: linear-gradient(135deg, #8b5cf6, #06b6d4);
     color: #fff;
     border: none;
+    min-height: 44px;
     padding: 0.875rem 2.5rem;
     border-radius: 10px;
     font-size: 1rem;
     font-weight: 600;
     cursor: pointer;
     transition: transform 0.2s, box-shadow 0.2s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .close-btn:active {

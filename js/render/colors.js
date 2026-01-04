@@ -41,10 +41,11 @@ export const COLOR_SCHEMES = {
     rainbow: {
         id: 'rainbow',
         name: 'Rainbow',
+        // Special marker values to trigger HSL rainbow mode in shader
         a: [0.5, 0.5, 0.5],
         b: [0.5, 0.5, 0.5],
         c: [1.0, 1.0, 1.0],
-        d: [0.00, 0.10, 0.20]
+        d: [0.833, 0.167, 0.5]  // Special marker for rainbow HSL mode
     },
     fire: {
         id: 'fire',

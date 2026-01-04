@@ -35,7 +35,6 @@ class FlyFractApp {
         this.errorHandler = new ErrorHandler();
         this.storage = new StateStorage();
 
-        this.juliaParam = null;
 
         // Render state
         this.needsRender = true;
@@ -123,13 +122,12 @@ class FlyFractApp {
             this.setupUICallbacks();
             this.updateUIState();
 
-            // Create Julia parameter indicator
-            this.createJuliaIndicator();
+            // Julia parameter indicator removed - no longer showing equations
 
             // Initialize gesture controller
             this.setupGestures();
 
-            // Setup touch handler to show UI when hidden (photo mode)
+            // Setup handlers to show UI when hidden (photo mode) - works on both mobile and desktop
             this.setupPhotoModeTouch();
 
             // Setup window resize handler
@@ -181,11 +179,7 @@ class FlyFractApp {
      * Setup UI callbacks
      */
     setupUICallbacks() {
-        this.uiControls.on('onPrevFractal', () => {
-            this.prevFractal();
-        });
-
-        this.uiControls.on('onNextFractal', () => {
+        this.uiControls.on('onFractalChange', () => {
             this.nextFractal();
         });
 
@@ -199,40 +193,13 @@ class FlyFractApp {
      */
     updateUIState() {
         const fractal = this.fractalManager.getCurrentType();
-        let hint = '';
-
-        if (fractal.id === 'julia') {
-            const preset = this.fractalManager.getCurrentJuliaPreset();
-            hint = preset.name;
-        }
-
-        this.uiControls.setFractalName(fractal.name, hint);
+        this.uiControls.setFractalName(fractal.name, fractal.id);
         this.uiControls.setColorLabel(this.colorManager.getCurrent().name);
     }
 
     /**
-     * Create Julia parameter indicator
+     * Julia parameter indicator removed - no longer showing equations
      */
-    createJuliaIndicator() {
-        this.juliaParam = document.createElement('div');
-        this.juliaParam.className = 'julia-param';
-        document.body.appendChild(this.juliaParam);
-    }
-
-    /**
-     * Update Julia parameter display
-     */
-    updateJuliaDisplay() {
-        if (!this.juliaParam) return;
-
-        if (this.fractalManager.currentType === 'julia') {
-            const preset = this.fractalManager.getCurrentJuliaPreset();
-            this.juliaParam.textContent = `${preset.name}: c = ${preset.c[0].toFixed(3)} + ${preset.c[1].toFixed(3)}i`;
-            this.juliaParam.classList.add('visible');
-        } else {
-            this.juliaParam.classList.remove('visible');
-        }
-    }
 
     /**
      * Switch to next fractal type
@@ -241,7 +208,6 @@ class FlyFractApp {
         this.fractalManager.nextType();
         this.resetView();
         this.updateUIState();
-        this.updateJuliaDisplay();
         this.saveState();
         this.requestRender();
     }
@@ -253,7 +219,6 @@ class FlyFractApp {
         this.fractalManager.prevType();
         this.resetView();
         this.updateUIState();
-        this.updateJuliaDisplay();
         this.saveState();
         this.requestRender();
     }
@@ -275,7 +240,6 @@ class FlyFractApp {
         if (this.fractalManager.currentType === 'julia') {
             this.fractalManager.nextJuliaPreset();
             this.updateUIState();
-            this.updateJuliaDisplay();
             this.requestRender();
         }
     }
@@ -337,7 +301,12 @@ class FlyFractApp {
             onGestureStart: () => {
                 this.isGesturing = true;
                 this.quality.onGestureStart();
-                this.uiControls.show();
+                // Show UI if it was hidden (photo mode)
+                if (this.uiControls && this.uiControls.allHidden) {
+                    this.uiControls.showAll();
+                } else {
+                    this.uiControls.show();
+                }
             },
 
             onGestureEnd: () => {
@@ -367,45 +336,47 @@ class FlyFractApp {
     }
 
     /**
-     * Setup touch handler for photo mode (show UI when hidden)
+     * Setup handlers for photo mode (show UI when hidden)
+     * Works on both mobile and desktop
      */
     setupPhotoModeTouch() {
-        if (isMobileDevice()) {
-            let photoModeTouchStart = null;
-            let photoModeTouchMoved = false;
+        // Show UI on any interaction when hidden
+        const showUIIfHidden = () => {
+            if (this.uiControls && this.uiControls.allHidden) {
+                this.uiControls.showAll();
+            }
+        };
 
-            // On mobile, tap to show UI when hidden (but don't interfere with gestures)
-            this.canvas.addEventListener('touchstart', (e) => {
-                if (this.uiControls && this.uiControls.allHidden && e.touches.length === 1) {
-                    photoModeTouchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
-                    photoModeTouchMoved = false;
-                }
-            }, { passive: true });
+        // Mobile: show on touch
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (this.uiControls && this.uiControls.allHidden) {
+                showUIIfHidden();
+            }
+        }, { passive: true });
 
-            this.canvas.addEventListener('touchmove', (e) => {
-                if (photoModeTouchStart) {
-                    photoModeTouchMoved = true;
-                }
-            }, { passive: true });
+        // Desktop: show on mouse click or mousedown (for panning)
+        // Note: mousedown is handled by gesture controller which calls onGestureStart
+        // This handler is a backup for clicks that don't trigger gestures
+        this.canvas.addEventListener('mousedown', (e) => {
+            // Only show if clicking on canvas, not on UI buttons
+            const target = e.target;
+            const isUIButton = target.closest('.photo-btn, .info-btn, .fractal-selector, .color-selector, .close-btn');
+            if (target === this.canvas && !isUIButton && this.uiControls && this.uiControls.allHidden) {
+                showUIIfHidden();
+            }
+        });
+        
+        // Also handle click event for desktop (more reliable than mousedown for some cases)
+        this.canvas.addEventListener('click', (e) => {
+            const target = e.target;
+            const isUIButton = target.closest('.photo-btn, .info-btn, .fractal-selector, .color-selector, .close-btn');
+            if (target === this.canvas && !isUIButton && this.uiControls && this.uiControls.allHidden) {
+                showUIIfHidden();
+            }
+        });
 
-            this.canvas.addEventListener('touchend', (e) => {
-                if (this.uiControls && this.uiControls.allHidden && photoModeTouchStart && !photoModeTouchMoved) {
-                    const touch = e.changedTouches[0];
-                    const dx = touch.clientX - photoModeTouchStart.x;
-                    const dy = touch.clientY - photoModeTouchStart.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const time = Date.now() - photoModeTouchStart.time;
-
-                    // Simple tap: small movement, short time
-                    if (distance < 10 && time < 300) {
-                        this.uiControls.showAll();
-                        e.preventDefault();
-                    }
-                }
-                photoModeTouchStart = null;
-                photoModeTouchMoved = false;
-            }, { passive: false });
-        }
+        // Mouse movement alone should NOT show UI in photo mode
+        // Only actual interactions (click, drag, scroll) should show UI
     }
 
     /**
@@ -413,14 +384,20 @@ class FlyFractApp {
      */
     setupMouseMovement() {
         if (!isMobileDevice()) {
-            // Show UI controls on mouse movement
+            // Show UI controls on mouse movement (but NOT in photo mode)
             let mouseMoveTimeout;
             this.canvas.addEventListener('mousemove', () => {
                 if (this.uiControls) {
+                    // Don't show UI if in photo mode (allHidden)
+                    if (this.uiControls.allHidden) {
+                        return; // Don't show UI on mouse movement in photo mode
+                    }
+                    
+                    // Normal auto-hide behavior when not in photo mode
                     this.uiControls.show();
                     clearTimeout(mouseMoveTimeout);
                     mouseMoveTimeout = setTimeout(() => {
-                        if (this.uiControls && !this.isGesturing) {
+                        if (this.uiControls && !this.isGesturing && !this.uiControls.allHidden) {
                             this.uiControls.hide();
                         }
                     }, 3000);

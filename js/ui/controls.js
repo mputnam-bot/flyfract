@@ -12,6 +12,7 @@ export class UIControls {
         this.hideTimeout = null;
         this.callbacks = {};
         this.allHidden = false;
+        this.lastHideTime = 0;
     }
 
     /**
@@ -43,40 +44,43 @@ export class UIControls {
     }
 
     /**
+     * Get thumbnail image path for a fractal type
+     */
+    getFractalThumbnail(fractalId) {
+        const thumbnails = {
+            mandelbrot: 'thumbnails/mandelbrot.jpeg',
+            julia: 'thumbnails/julia.jpeg',
+            burningship: 'thumbnails/burning ship.jpeg',
+            tricorn: 'thumbnails/tricorn.jpeg',
+            newton: 'thumbnails/newton.jpeg',
+            phoenix: 'thumbnails/phoenix.jpeg',
+            lyapunov: 'thumbnails/lyapunov.jpeg'
+        };
+        return thumbnails[fractalId] || thumbnails.mandelbrot;
+    }
+
+    /**
      * Create fractal type selector
      */
     createFractalSelector() {
         const selector = document.createElement('div');
         selector.className = 'fractal-selector';
         selector.innerHTML = `
-            <button class="selector-btn prev" aria-label="Previous fractal">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-                </svg>
+            <button class="fractal-btn" aria-label="Change fractal type">
+                <img src="${this.getFractalThumbnail('mandelbrot')}" alt="Fractal thumbnail" class="fractal-icon" />
             </button>
-            <div class="selector-label">
-                <span class="fractal-name">Mandelbrot</span>
-                <span class="fractal-hint">swipe to change</span>
-            </div>
-            <button class="selector-btn next" aria-label="Next fractal">
-                <svg viewBox="0 0 24 24" width="20" height="20">
-                    <path fill="currentColor" d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
-                </svg>
-            </button>
+            <span class="fractal-label">Mandelbrot</span>
         `;
 
         this.container.appendChild(selector);
         this.elements.fractalSelector = selector;
-        this.elements.fractalName = selector.querySelector('.fractal-name');
-        this.elements.fractalHint = selector.querySelector('.fractal-hint');
+        this.elements.fractalLabel = selector.querySelector('.fractal-label');
+        this.elements.fractalIcon = selector.querySelector('.fractal-icon');
 
-        // Event listeners
-        selector.querySelector('.prev').addEventListener('click', () => {
-            if (this.callbacks.onPrevFractal) this.callbacks.onPrevFractal();
-        });
-
-        selector.querySelector('.next').addEventListener('click', () => {
-            if (this.callbacks.onNextFractal) this.callbacks.onNextFractal();
+        // Event listener - click anywhere on selector to cycle through fractals
+        selector.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling
+            if (this.callbacks.onFractalChange) this.callbacks.onFractalChange();
         });
     }
 
@@ -88,7 +92,7 @@ export class UIControls {
         selector.className = 'color-selector';
         selector.innerHTML = `
             <button class="color-btn" aria-label="Change color scheme">
-                <svg viewBox="0 0 24 24" width="24" height="24">
+                <svg viewBox="0 0 24 24" width="28" height="28">
                     <path fill="currentColor" d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 9 6.5 9 8 9.67 8 10.5 7.33 12 6.5 12zm3-4C8.67 8 8 7.33 8 6.5S8.67 5 9.5 5s1.5.67 1.5 1.5S10.33 8 9.5 8zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 5 14.5 5s1.5.67 1.5 1.5S15.33 8 14.5 8zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 9 17.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
                 </svg>
             </button>
@@ -99,7 +103,9 @@ export class UIControls {
         this.elements.colorSelector = selector;
         this.elements.colorLabel = selector.querySelector('.color-label');
 
-        selector.querySelector('.color-btn').addEventListener('click', () => {
+        // Event listener - click anywhere on selector to cycle through color schemes
+        selector.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling
             if (this.callbacks.onColorChange) this.callbacks.onColorChange();
         });
     }
@@ -117,17 +123,18 @@ export class UIControls {
             </svg>
         `;
 
-        // Position in top-right (where zoom indicator was)
-        btn.style.position = 'fixed';
-        btn.style.top = 'max(16px, env(safe-area-inset-top))';
-        btn.style.right = 'max(16px, env(safe-area-inset-right))';
-        btn.style.zIndex = '100';
-
         document.body.appendChild(btn);
         this.elements.photoBtn = btn;
 
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling
+            e.preventDefault(); // Prevent any default behavior
             this.hideAll();
+        });
+        
+        // Also handle mousedown to ensure it works on desktop
+        btn.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); // Prevent event from bubbling to canvas
         });
     }
 
@@ -153,14 +160,14 @@ export class UIControls {
     }
 
     /**
-     * Update fractal name display
+     * Update fractal name display and icon
      */
-    setFractalName(name, hint = '') {
-        if (this.elements.fractalName) {
-            this.elements.fractalName.textContent = name;
+    setFractalName(name, fractalId = 'mandelbrot') {
+        if (this.elements.fractalLabel) {
+            this.elements.fractalLabel.textContent = name;
         }
-        if (this.elements.fractalHint && hint) {
-            this.elements.fractalHint.textContent = hint;
+        if (this.elements.fractalIcon) {
+            this.elements.fractalIcon.src = this.getFractalThumbnail(fractalId);
         }
     }
 
@@ -194,6 +201,12 @@ export class UIControls {
      * Hide all UI (for photo mode)
      */
     hideAll() {
+        // Clear any auto-hide timeout
+        if (this.hideTimeout) {
+            clearTimeout(this.hideTimeout);
+            this.hideTimeout = null;
+        }
+        
         this.container.classList.add('hidden');
         if (this.elements.photoBtn) {
             this.elements.photoBtn.classList.add('hidden');
@@ -203,6 +216,9 @@ export class UIControls {
         }
         this.visible = false;
         this.allHidden = true;
+        
+        // Store hide time to prevent immediate re-show
+        this.lastHideTime = Date.now();
     }
 
     /**

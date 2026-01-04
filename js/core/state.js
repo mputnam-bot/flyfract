@@ -96,8 +96,9 @@ export class ViewState {
 
         // Update zoom
         this.zoomLog += Math.log2(factor);
-        // Clamp zoom to reasonable range (1x to 10^12x)
-        this.zoomLog = Math.max(0, Math.min(40, this.zoomLog));
+        // Clamp zoom to reasonable range (0.001x to 10^12x)
+        // Allow zooming out to see more of the fractal (negative zoomLog = zoom < 1x)
+        this.zoomLog = Math.max(-10, Math.min(40, this.zoomLog));
         this.zoom = Math.pow(2, this.zoomLog);
 
         // Calculate the point in fractal space that should stay fixed
@@ -158,7 +159,9 @@ export class ViewState {
      * Calculate max iterations based on zoom level
      */
     getMaxIterations(isGesturing = false) {
-        const baseIter = 100 + Math.floor(this.zoomLog * 25);
+        // When zoomed out (negative zoomLog), use fewer iterations
+        // When zoomed in (positive zoomLog), use more iterations
+        const baseIter = 100 + Math.floor(Math.max(0, this.zoomLog) * 25);
         const maxIter = Math.min(1000, baseIter);
 
         // Reduce iterations during gestures for performance
@@ -175,10 +178,24 @@ export class ViewState {
      */
     formatZoom() {
         const zoom = this.zoom;
+        
+        // Handle zoom out (zoom < 1)
+        if (zoom < 1.0) {
+            if (zoom >= 0.001) {
+                return `${zoom.toFixed(3)}x`;
+            }
+            // Very small zoom values
+            const exp = Math.floor(Math.log10(zoom));
+            const mantissa = zoom / Math.pow(10, exp);
+            return `${mantissa.toFixed(2)}×10^${exp}`;
+        }
+        
+        // Handle zoom in (zoom >= 1)
         if (zoom < 1000) {
             return `${zoom.toFixed(1)}x`;
         }
 
+        // Very large zoom values
         const exp = Math.floor(Math.log10(zoom));
         const mantissa = zoom / Math.pow(10, exp);
         return `${mantissa.toFixed(1)}×10^${exp}`;

@@ -441,6 +441,11 @@ export class GestureController {
     onWheel(e) {
         e.preventDefault();
 
+        // Trigger gesture start immediately (for showing UI in photo mode)
+        if (this.state === 'idle' && this.callbacks.onGestureStart) {
+            this.callbacks.onGestureStart();
+        }
+
         // Zoom based on wheel delta
         // Negative deltaY = scroll up = zoom in
         // Positive deltaY = scroll down = zoom out
@@ -450,11 +455,6 @@ export class GestureController {
         // Zoom centered on mouse position
         if (this.callbacks.onZoom) {
             this.callbacks.onZoom(zoomFactor, e.clientX, e.clientY);
-        }
-
-        // Trigger gesture start/end for quality adjustment
-        if (this.state === 'idle' && this.callbacks.onGestureStart) {
-            this.callbacks.onGestureStart();
         }
 
         // End gesture after a short delay
