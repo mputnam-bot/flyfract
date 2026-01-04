@@ -11,6 +11,7 @@ export class UIControls {
         this.visible = true;
         this.hideTimeout = null;
         this.callbacks = {};
+        this.allHidden = false;
     }
 
     /**
@@ -29,11 +30,16 @@ export class UIControls {
         // Create color selector
         this.createColorSelector();
 
+        // Create photo button
+        this.createPhotoButton();
+
         // Create info button
         this.createInfoButton();
 
-        // Auto-hide UI after inactivity
-        this.setupAutoHide();
+        // Auto-hide UI after inactivity (desktop only)
+        if (!isMobileDevice()) {
+            this.setupAutoHide();
+        }
     }
 
     /**
@@ -99,6 +105,33 @@ export class UIControls {
     }
 
     /**
+     * Create photo button
+     */
+    createPhotoButton() {
+        const btn = document.createElement('button');
+        btn.className = 'photo-btn';
+        btn.setAttribute('aria-label', 'Hide UI for photo');
+        btn.innerHTML = `
+            <svg viewBox="0 0 24 24" width="24" height="24">
+                <path fill="currentColor" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+            </svg>
+        `;
+
+        // Position in top-right (where zoom indicator was)
+        btn.style.position = 'fixed';
+        btn.style.top = 'max(16px, env(safe-area-inset-top))';
+        btn.style.right = 'max(16px, env(safe-area-inset-right))';
+        btn.style.zIndex = '100';
+
+        document.body.appendChild(btn);
+        this.elements.photoBtn = btn;
+
+        btn.addEventListener('click', () => {
+            this.hideAll();
+        });
+    }
+
+    /**
      * Create info/help button
      */
     createInfoButton() {
@@ -155,6 +188,36 @@ export class UIControls {
     hide() {
         this.container.classList.add('hidden');
         this.visible = false;
+    }
+
+    /**
+     * Hide all UI (for photo mode)
+     */
+    hideAll() {
+        this.container.classList.add('hidden');
+        if (this.elements.photoBtn) {
+            this.elements.photoBtn.classList.add('hidden');
+        }
+        if (this.elements.infoBtn) {
+            this.elements.infoBtn.classList.add('hidden');
+        }
+        this.visible = false;
+        this.allHidden = true;
+    }
+
+    /**
+     * Show all UI (from photo mode)
+     */
+    showAll() {
+        this.container.classList.remove('hidden');
+        if (this.elements.photoBtn) {
+            this.elements.photoBtn.classList.remove('hidden');
+        }
+        if (this.elements.infoBtn) {
+            this.elements.infoBtn.classList.remove('hidden');
+        }
+        this.visible = true;
+        this.allHidden = false;
     }
 
     /**

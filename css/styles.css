@@ -184,32 +184,42 @@ html, body {
     background: #7c3aed;
 }
 
-/* Zoom Indicator */
+/* Zoom Indicator - Hidden */
 #zoom-indicator {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    padding: 6px 12px;
+    display: none;
+}
+
+/* Photo Button */
+.photo-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border-radius: 6px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
+    border-radius: 10px;
     color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.3s;
     z-index: 100;
-    opacity: 0;
-    transition: opacity 0.3s ease-out;
-    pointer-events: none;
-
-    /* Safe area for notch */
-    top: max(16px, env(safe-area-inset-top));
-    right: max(16px, env(safe-area-inset-right));
 }
 
-#zoom-indicator.visible {
-    opacity: 1;
+.photo-btn:active {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.photo-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .photo-btn:hover {
+        background: rgba(0, 0, 0, 0.75);
+    }
 }
 
 /* Prevent pull-to-refresh */

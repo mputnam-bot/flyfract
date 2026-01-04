@@ -17,7 +17,7 @@ export class QualityAdapter {
         this.maxHistoryLength = 10;
 
         // Quality settings
-        this.gestureQuality = 0.5;    // Quality during gestures
+        this.gestureQuality = 0.75;   // Quality during gestures (increased for better detail)
         this.staticQuality = 1.0;      // Quality when static
         this.recoveryRate = 0.05;      // How fast quality recovers
     }

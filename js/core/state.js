@@ -51,9 +51,17 @@ export class ViewState {
         const minDim = Math.min(this.screenWidth, this.screenHeight);
         const scale = 2.0 / (this.zoom * minDim);
 
+        // Apply inverse rotation to screen delta to get fractal space delta
+        // This ensures panning is relative to the rotated view
+        const cosR = Math.cos(-this.rotation); // Inverse rotation
+        const sinR = Math.sin(-this.rotation);
+        
+        const rotatedDX = dx * cosR - dy * sinR;
+        const rotatedDY = dx * sinR + dy * cosR;
+
         // Update center (X increases right, Y increases up in fractal space)
-        const fractalDX = -dx * scale;
-        const fractalDY = dy * scale;
+        const fractalDX = -rotatedDX * scale;
+        const fractalDY = rotatedDY * scale;
 
         // Add to emulated double
         this.centerX = this.dsAdd(this.centerX, { hi: fractalDX, lo: 0 });
@@ -154,8 +162,9 @@ export class ViewState {
         const maxIter = Math.min(1000, baseIter);
 
         // Reduce iterations during gestures for performance
+        // Less aggressive reduction to preserve detail
         if (isGesturing) {
-            return Math.max(50, Math.floor(maxIter * 0.4));
+            return Math.max(50, Math.floor(maxIter * 0.65));
         }
 
         return maxIter;

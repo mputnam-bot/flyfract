@@ -35,9 +35,7 @@ class FlyFractApp {
         this.errorHandler = new ErrorHandler();
         this.storage = new StateStorage();
 
-        this.zoomIndicator = document.getElementById('zoom-indicator');
         this.juliaParam = null;
-        this.zoomTimeout = null;
 
         // Render state
         this.needsRender = true;
@@ -130,6 +128,9 @@ class FlyFractApp {
 
             // Initialize gesture controller
             this.setupGestures();
+
+            // Setup touch handler to show UI when hidden (photo mode)
+            this.setupPhotoModeTouch();
 
             // Setup window resize handler
             this.setupResizeHandler();
@@ -366,6 +367,48 @@ class FlyFractApp {
     }
 
     /**
+     * Setup touch handler for photo mode (show UI when hidden)
+     */
+    setupPhotoModeTouch() {
+        if (isMobileDevice()) {
+            let photoModeTouchStart = null;
+            let photoModeTouchMoved = false;
+
+            // On mobile, tap to show UI when hidden (but don't interfere with gestures)
+            this.canvas.addEventListener('touchstart', (e) => {
+                if (this.uiControls && this.uiControls.allHidden && e.touches.length === 1) {
+                    photoModeTouchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+                    photoModeTouchMoved = false;
+                }
+            }, { passive: true });
+
+            this.canvas.addEventListener('touchmove', (e) => {
+                if (photoModeTouchStart) {
+                    photoModeTouchMoved = true;
+                }
+            }, { passive: true });
+
+            this.canvas.addEventListener('touchend', (e) => {
+                if (this.uiControls && this.uiControls.allHidden && photoModeTouchStart && !photoModeTouchMoved) {
+                    const touch = e.changedTouches[0];
+                    const dx = touch.clientX - photoModeTouchStart.x;
+                    const dy = touch.clientY - photoModeTouchStart.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const time = Date.now() - photoModeTouchStart.time;
+
+                    // Simple tap: small movement, short time
+                    if (distance < 10 && time < 300) {
+                        this.uiControls.showAll();
+                        e.preventDefault();
+                    }
+                }
+                photoModeTouchStart = null;
+                photoModeTouchMoved = false;
+            }, { passive: false });
+        }
+    }
+
+    /**
      * Setup mouse movement handler for desktop
      */
     setupMouseMovement() {
@@ -540,24 +583,7 @@ class FlyFractApp {
         // Draw
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        // Update zoom indicator
-        this.updateZoomIndicator(this.viewState.formatZoom());
-    }
-
-    /**
-     * Update zoom level indicator
-     */
-    updateZoomIndicator(zoomText) {
-        if (!this.zoomIndicator) return;
-
-        this.zoomIndicator.textContent = zoomText;
-        this.zoomIndicator.classList.add('visible');
-
-        // Hide after delay
-        clearTimeout(this.zoomTimeout);
-        this.zoomTimeout = setTimeout(() => {
-            this.zoomIndicator.classList.remove('visible');
-        }, 2000);
+        // Zoom indicator removed - replaced with photo button
     }
 }
 
