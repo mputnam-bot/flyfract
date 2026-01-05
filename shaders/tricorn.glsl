@@ -10,6 +10,7 @@ uniform vec3 u_colorA;      // Color scheme parameter A
 uniform vec3 u_colorB;      // Color scheme parameter B
 uniform vec3 u_colorC;      // Color scheme parameter C
 uniform vec3 u_colorD;      // Color scheme parameter D
+uniform int u_isRainbow;    // 1 if rainbow mode, 0 otherwise
 
 // HSL to RGB conversion
 vec3 hsl2rgb(vec3 c) {
@@ -19,9 +20,7 @@ vec3 hsl2rgb(vec3 c) {
 
 // Color palette - procedural cosine gradient or rainbow
 vec3 palette(float t) {
-    // Check if this is rainbow scheme (d values indicate rainbow)
-    if (abs(u_colorD.x - 0.833) < 0.001 && abs(u_colorD.y - 0.167) < 0.001 && abs(u_colorD.z - 0.5) < 0.001) {
-        // True rainbow: cycle through hue 0-360 (ROYGBIV)
+    if (u_isRainbow == 1) {
         float hue = fract(t);
         return hsl2rgb(vec3(hue, 1.0, 0.5));
     }

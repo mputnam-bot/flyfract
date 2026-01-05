@@ -139,7 +139,8 @@ export class FractalManager {
                     'u_colorA',
                     'u_colorB',
                     'u_colorC',
-                    'u_colorD'
+                    'u_colorD',
+                    'u_isRainbow'
                 ]);
 
                 this.programs.set(type, { program, uniforms });

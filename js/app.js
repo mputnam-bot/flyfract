@@ -612,15 +612,16 @@ class FlyFractApp {
      * Render frame
      */
     render() {
+        const frameStart = performance.now();
         const gl = this.gl;
 
         // Get current program
         const { program, uniforms } = this.fractalManager.getCurrent();
         gl.useProgram(program);
 
-        // Canvas ALWAYS at full resolution - never changes during gestures
-        // This eliminates visible flicker on gesture start/end
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        // Adaptive quality: scale resolution based on performance
+        const qualityMultiplier = this.quality.getQuality();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2) * qualityMultiplier;
         const width = Math.floor(this.canvas.clientWidth * dpr);
         const height = Math.floor(this.canvas.clientHeight * dpr);
 
@@ -670,6 +671,10 @@ class FlyFractApp {
         if (uniforms.u_colorD) {
             gl.uniform3f(uniforms.u_colorD, colorScheme.d[0], colorScheme.d[1], colorScheme.d[2]);
         }
+        // Rainbow mode flag - avoids per-pixel float comparisons in shader
+        if (uniforms.u_isRainbow !== undefined) {
+            gl.uniform1i(uniforms.u_isRainbow, colorScheme.id === 'rainbow' ? 1 : 0);
+        }
 
         // Julia set specific uniform
         if (uniforms.u_juliaC) {
@@ -686,7 +691,9 @@ class FlyFractApp {
         // Draw
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
-        // Zoom indicator removed - replaced with photo button
+        // Track frame time for adaptive quality
+        const frameTime = performance.now() - frameStart;
+        this.quality.update(frameTime);
     }
 }
 

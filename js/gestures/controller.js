@@ -37,6 +37,7 @@ export class GestureController {
         // Mouse state
         this.isMouseDown = false;
         this.mouseButton = 0; // 0 = left, 2 = right
+        this.mouseDownPos = { x: 0, y: 0 }; // Store initial mouse down position for click detection
 
         // Safari/Mac trackpad gesture state
         this.lastGestureRotation = 0;
@@ -69,10 +70,11 @@ export class GestureController {
 
         // Mouse events (desktop)
         if (!this.isMobile) {
-            el.addEventListener('mousedown', this.onMouseDown.bind(this));
-            el.addEventListener('mousemove', this.onMouseMove.bind(this));
-            el.addEventListener('mouseup', this.onMouseUp.bind(this));
-            el.addEventListener('mouseleave', this.onMouseLeave.bind(this));
+            const mouseOpts = { passive: false, capture: true };
+            el.addEventListener('mousedown', this.onMouseDown.bind(this), mouseOpts);
+            el.addEventListener('mousemove', this.onMouseMove.bind(this), mouseOpts);
+            el.addEventListener('mouseup', this.onMouseUp.bind(this), mouseOpts);
+            el.addEventListener('mouseleave', this.onMouseLeave.bind(this), mouseOpts);
             el.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
             el.addEventListener('dblclick', this.onDoubleClick.bind(this));
             
@@ -380,6 +382,7 @@ export class GestureController {
 
     onMouseDown(e) {
         e.preventDefault();
+        e.stopPropagation();
         this.isMouseDown = true;
         this.mouseButton = e.button;
 
@@ -391,6 +394,7 @@ export class GestureController {
 
         // Left button = pan, Right button = rotate
         if (e.button === 0) { // Left button - pan
+            this.mouseDownPos = { x: e.clientX, y: e.clientY };
             this.lastCenter = { x: e.clientX, y: e.clientY };
             this.lastMoveTime = performance.now();
             this.velocity = { x: 0, y: 0 };
@@ -400,6 +404,7 @@ export class GestureController {
                 this.callbacks.onGestureStart();
             }
         } else if (e.button === 2) { // Right button - rotate
+            this.mouseDownPos = { x: e.clientX, y: e.clientY };
             this.lastCenter = { x: e.clientX, y: e.clientY };
             this.state = 'rotate';
 
@@ -414,6 +419,7 @@ export class GestureController {
         if (this.state !== 'pan' && this.state !== 'rotate') return;
 
         e.preventDefault();
+        e.stopPropagation();
 
         const dx = e.clientX - this.lastCenter.x;
         const dy = e.clientY - this.lastCenter.y;
@@ -454,12 +460,17 @@ export class GestureController {
         if (!this.isMouseDown) return;
 
         e.preventDefault();
+        e.stopPropagation();
+        
+        const wasPanning = this.state === 'pan';
+        const wasRotating = this.state === 'rotate';
         this.isMouseDown = false;
 
-        if (this.state === 'pan') {
+        if (wasPanning) {
             // Check if it was a click (didn't move much)
-            const dx = e.clientX - this.lastCenter.x;
-            const dy = e.clientY - this.lastCenter.y;
+            // Use the initial mouse down position, not the last move position
+            const dx = e.clientX - this.mouseDownPos.x;
+            const dy = e.clientY - this.mouseDownPos.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
 
             if (distance < 5) {
@@ -471,7 +482,7 @@ export class GestureController {
             } else {
                 this.endGesture();
             }
-        } else if (this.state === 'rotate') {
+        } else if (wasRotating) {
             // Rotation complete, no momentum for rotation
             this.endGesture();
         } else {

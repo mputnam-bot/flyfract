@@ -5,6 +5,7 @@
  */
 
 import { GestureBuffer } from '../gestures/buffer.js';
+import { isMobileDevice } from './device.js';
 
 export class AnimationOrchestrator {
     constructor() {
@@ -35,29 +36,54 @@ export class AnimationOrchestrator {
         this.MIN_VELOCITY = 0.5;
         this.MAX_VELOCITY = 100;
 
+        // FPS throttling for mobile static view (saves battery)
+        this.isMobile = isMobileDevice();
+        this.staticFPSLimit = 30;  // Limit FPS when static on mobile
+        this.lastRenderTime = 0;
+        this.minFrameInterval = 1000 / this.staticFPSLimit;
+
         // Iteration smoothing - prevents visible pop on gesture state change
         this.iterations = {
             current: 300,
             gestureTarget: 100,
             staticTarget: 300,
-            transitionSpeed: 0.25  // Reaches target in ~4-5 frames
+            transitionSpeed: 0.25,  // Reaches target in ~4-5 frames
+            zoomScaleFactor: 12,    // Extra iterations per zoom doubling
+            maxIterations: 1500     // Hard cap to prevent GPU stalls
         };
     }
 
     /**
      * Get smoothed iteration count
      * Called each frame to get the current iteration target
+     * Factors in zoom level for better detail at deep zooms
      */
     getIterations() {
-        const target = this.isGesturing ?
+        const baseTarget = this.isGesturing ?
             this.iterations.gestureTarget :
             this.iterations.staticTarget;
 
+        // Add zoom-adaptive scaling: more iterations at deeper zooms
+        // Use smooth calculation instead of Math.floor to prevent flickering
+        let zoomBonus = 0;
+        if (this.viewState && this.viewState.zoomLog > 0) {
+            // Calculate zoom bonus smoothly without discrete jumps
+            zoomBonus = this.viewState.zoomLog * this.iterations.zoomScaleFactor;
+        }
+
+        const target = Math.min(
+            baseTarget + zoomBonus,
+            this.iterations.maxIterations
+        );
+
+        // Faster transition speed for smoother zoom experience
+        const transitionSpeed = this.isGesturing ? 0.35 : 0.2;
+
         // Exponential interpolation for smooth transition
-        this.iterations.current += (target - this.iterations.current) * this.iterations.transitionSpeed;
+        this.iterations.current += (target - this.iterations.current) * transitionSpeed;
 
         // Snap when very close to avoid endless tiny updates
-        if (Math.abs(this.iterations.current - target) < 5) {
+        if (Math.abs(this.iterations.current - target) < 2) {
             this.iterations.current = target;
         }
 
@@ -107,6 +133,7 @@ export class AnimationOrchestrator {
         this.lastTime = timestamp;
 
         let shouldRender = this.needsRender;
+        const isAnimating = this.momentum !== null || this.tweens.size > 0;
 
         // 1. Flush buffered gesture inputs atomically
         if (this.gestureBuffer.hasPending() && this.viewState) {
@@ -148,9 +175,19 @@ export class AnimationOrchestrator {
             this.tweens.delete(id);
         }
 
-        // 4. Single render call if needed
+        // 4. FPS throttling for mobile static view (saves battery)
+        // Only throttle when: mobile + static + not gesturing + not animating
+        if (shouldRender && this.isMobile && !this.isGesturing && !isAnimating) {
+            const timeSinceLastRender = timestamp - this.lastRenderTime;
+            if (timeSinceLastRender < this.minFrameInterval) {
+                shouldRender = false;
+            }
+        }
+
+        // 5. Single render call if needed
         if (shouldRender && this.renderCallback) {
             this.renderCallback();
+            this.lastRenderTime = timestamp;
         }
 
         // Reset render flag unless gesturing

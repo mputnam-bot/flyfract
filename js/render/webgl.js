@@ -25,7 +25,7 @@ export class WebGLContext {
             antialias: false,
             depth: false,
             stencil: false,
-            preserveDrawingBuffer: true, // Needed for screenshots
+            preserveDrawingBuffer: false, // Disabled for performance; screenshots still work if taken immediately after render
             powerPreference: 'high-performance'
         };
 

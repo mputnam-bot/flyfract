@@ -10,6 +10,7 @@ uniform vec3 u_colorA;
 uniform vec3 u_colorB;
 uniform vec3 u_colorC;
 uniform vec3 u_colorD;
+uniform int u_isRainbow;
 
 // Emulated double-precision addition
 vec2 ds_add(vec2 a, vec2 b) {
@@ -27,7 +28,7 @@ vec3 hsl2rgb(vec3 c) {
 
 // Color palette
 vec3 palette(float t) {
-    if (abs(u_colorD.x - 0.833) < 0.001 && abs(u_colorD.y - 0.167) < 0.001 && abs(u_colorD.z - 0.5) < 0.001) {
+    if (u_isRainbow == 1) {
         float hue = fract(t);
         return hsl2rgb(vec3(hue, 1.0, 0.5));
     }

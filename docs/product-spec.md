@@ -1,5 +1,4 @@
-# FlyFract - Mobile Web Fractal Explorer
-## Product Specification Document
+# FlyFract - Product Specification
 
 ---
 
