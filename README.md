@@ -12,7 +12,7 @@ FlyFract is a mobile-first web application that transforms fractal mathematics i
 - **Mobile-First Design**: Optimized for touch interactions with intuitive pan, zoom, and rotate gestures
 - **High Performance**: GPU-accelerated rendering using WebGL for smooth 60fps on mobile devices
 - **Progressive Web App**: Installable on mobile devices with offline capability
-- **Multiple Color Schemes**: Beautiful color palettes including Inferno, Plasma, Viridis, and more
+- **Multiple Color Schemes**: Beautiful color palettes including Inferno, Ocean, Ice, Monochrome and more
 - **Smooth Navigation**: Emulated double-precision arithmetic for deep zoom capabilities
 - **Photo Mode**: Hide UI elements for clean, distraction-free viewing
 
