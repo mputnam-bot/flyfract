@@ -23,7 +23,7 @@ export class StateStorage {
                 : 'mandelbrot';
             const colorScheme = VALID_COLORS.includes(state.colorScheme)
                 ? state.colorScheme
-                : 'cosmic';
+                : 'inferno';
 
             const data = {
                 version: this.version,

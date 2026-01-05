@@ -1,16 +1,16 @@
 # FlyFract Color Palettes
 
-FlyFract supports **8 color palettes** that transform the fractal visualization with different color schemes. All palettes use a procedural cosine gradient formula: `a + b * cos(2π(c*t + d))`
+FlyFract supports **8 color palettes** that transform the fractal visualization with different color schemes. All palettes use a procedural cosine gradient formula: `a + b * cos(2π(c*t + d))`. New users default to the **Inferno** palette, which provides a dramatic, high-contrast viewing experience.
 
 ## Available Palettes
 
-### 1. **Cosmic** (Default)
+### 1. **Cosmic**
 - **ID**: `cosmic`
 - **Description**: Classic blue-to-purple-to-gold gradient, reminiscent of deep space
 - **Best for**: General exploration, default experience
 - **Color Range**: Deep blue → Purple → Magenta → Gold → White-yellow
 
-### 2. **Inferno**
+### 2. **Inferno** (Default)
 - **ID**: `inferno`
 - **Description**: Fiery orange-red gradient, like flames
 - **Best for**: Dramatic, high-contrast views

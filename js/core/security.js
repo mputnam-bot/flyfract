@@ -4,10 +4,10 @@
  */
 
 // Valid fractal types (whitelist)
-const VALID_FRACTALS = ['mandelbrot', 'julia', 'burningship', 'tricorn', 'newton', 'phoenix', 'lyapunov'];
+const VALID_FRACTALS = ['mandelbrot', 'julia', 'burningship', 'tricorn', 'newton', 'phoenix', 'lyapunov', 'multibrot', 'magnet', 'celtic'];
 
 // Valid color schemes (whitelist)
-const VALID_COLORS = ['cosmic', 'fire', 'ocean', 'forest', 'sunset', 'neon', 'grayscale', 'rainbow'];
+const VALID_COLORS = ['cosmic', 'inferno', 'ocean', 'electric', 'rainbow', 'fire', 'ice', 'monochrome'];
 
 /**
  * Validate and sanitize URL parameters for share links
@@ -113,7 +113,7 @@ export function validateStoredState(data) {
     if (typeof data.colorScheme === 'string' && VALID_COLORS.includes(data.colorScheme)) {
         validated.colorScheme = data.colorScheme;
     } else {
-        validated.colorScheme = 'cosmic'; // Default
+        validated.colorScheme = 'inferno'; // Default (matches app default)
     }
 
     // Validate timestamp (must be a reasonable date)

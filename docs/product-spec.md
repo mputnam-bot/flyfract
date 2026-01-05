@@ -95,7 +95,7 @@ FlyFract removes the technical barriers that have traditionally separated users 
 
 ### Phase 2: Expansion Fractals (Post-v1)
 
-All 7 fractals are currently implemented:
+All 10 fractals are currently implemented:
 1. Mandelbrot Set ✅
 2. Julia Sets ✅
 3. Burning Ship Fractal ✅
@@ -103,6 +103,9 @@ All 7 fractals are currently implemented:
 5. Newton Fractals ✅
 6. Phoenix Fractal ✅
 7. Lyapunov Fractal ✅
+8. Multibrot ✅
+9. Magnet ✅
+10. Celtic ✅
 
 Future expansion possibilities:
 - **Barnsley Fern** - Different type (IFS), organic shapes
@@ -122,11 +125,12 @@ Future expansion possibilities:
 ### P0 - Critical (Must Have for Launch)
 
 #### 4.1 Intuitive Touch Navigation
-- **Pinch-to-Zoom**: Smooth, responsive zoom in/out (0.1x - 10^12x for v1, 10^15x future goal)
+- **Pinch-to-Zoom**: Smooth, responsive zoom in/out (supports deep zoom with emulated double precision)
 - **Pan/Drag**: Natural dragging to explore different regions
-- **Double-Tap**: Quick zoom to interesting region (2x zoom centered on tap)
-- **Momentum Scrolling**: Inertial panning after release (P1 - Phase 2)
-- **Performance**: 60fps maintained during all gestures
+- **Double-Tap**: Quick zoom to interesting region (2.5x zoom centered on tap)
+- **Rotate**: Two-finger rotation gesture (desktop: right-click drag)
+- **Performance**: 60fps maintained during all gestures via AnimationOrchestrator
+- **Desktop Support**: Full mouse and keyboard controls (arrow keys, +/- zoom, F/C/R/P keys)
 
 #### 4.2 Beautiful Visual Rendering
 - **High-Quality Colors**: Smooth gradients, visually pleasing color maps
@@ -138,7 +142,7 @@ Future expansion possibilities:
 - **Button-Based Selector**: Tap button to cycle through fractal types
 - **Preview Thumbnails**: Visual thumbnail preview for each fractal type
 - **Current Fractal Indicator**: Shows current fractal name and thumbnail icon
-- **7 Fractal Types**: Mandelbrot, Julia Sets, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov
+- **10 Fractal Types**: Mandelbrot, Julia Sets, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov, Multibrot, Magnet, Celtic
 
 #### 4.4 Zoom Level Indicator
 - **Status**: Not currently implemented in the UI (may be added in future versions)
@@ -151,18 +155,23 @@ Future expansion possibilities:
 - **Screenshot Ready**: Allows users to take screenshots without UI elements
 
 #### 4.6 Color Scheme Selection
-- **8 Color Palettes**: Cosmic (default), Inferno, Ocean, Electric, Rainbow, Fire, Ice, Monochrome
+- **8 Color Palettes**: Cosmic, Inferno (default), Ocean, Electric, Rainbow, Fire, Ice, Monochrome
 - **Quick Switcher**: Tap button to cycle through color schemes
 - **State Persistence**: Current color scheme saved and restored on next visit
+- **First-Time Default**: New users see Mandelbrot fractal with Inferno color scheme
 
-#### 4.7 Reset/Home Button
-- **Status**: Not currently implemented (may be added in future versions)
+#### 4.7 Reset/Home Functionality
+- **Keyboard Shortcut**: R key resets view to default for current fractal (desktop only)
+- **UI Button**: Not currently implemented (may be added in future versions)
 
 #### 4.8 Performance Optimization
-- **Adaptive Quality**: QualityAdapter adjusts rendering quality based on frame time
-- **Device-Based Iterations**: Iteration counts based on device tier (low/mid/high)
+- **AnimationOrchestrator**: Unified animation loop handles all animations, momentum, and rendering
+- **Iteration Smoothing**: Smooth transitions between gesture and static iteration counts (prevents flickering)
+- **Device-Based Iterations**: Iteration counts based on device tier (low/mid/high) via device detection
+- **QualityAdapter**: Adjusts rendering quality based on frame time (currently used for resolution scaling)
+- **Fixed Resolution Approach**: Canvas resolution remains constant during gestures; only iterations change (eliminates visible flicker)
+- **Gesture Buffering**: Gesture inputs are buffered and applied atomically per frame
 - **Memory Management**: Efficient handling of zoom level changes
-- **Note**: Progressive refinement system was removed in favor of simpler adaptive quality
 
 ### P2 - Nice to Have (Post-Launch or v1.1)
 
@@ -193,7 +202,7 @@ Future expansion possibilities:
    - Show elegant loading animation (pulsing fractal preview or CSS animation)
    - Display progress during shader compilation (if >500ms)
    - Graceful error message if WebGL unavailable
-3. **Immediate Impact**: Beautiful fractal renders with visually stunning default view
+3. **Immediate Impact**: Beautiful fractal renders with visually stunning default view (Mandelbrot with Inferno color scheme)
 4. **Visual Hook**: Default view is pre-selected interesting region (see Technical Spec for coordinates)
 5. **No Tutorial**: Interface is self-evident—user immediately understands they can interact
 
@@ -219,9 +228,11 @@ Future expansion possibilities:
 #### Touch Gesture Map
 - **Single Finger Drag**: Pan across fractal
 - **Two Finger Pinch**: Zoom in/out
-- **Double Tap**: Quick zoom (centered on tap location)
-- **Long Press**: Context menu (future: save location, share)
-- **Horizontal Swipe**: Switch between fractals (on selector bar)
+- **Two Finger Rotate**: Rotate the view
+- **Double Tap**: Quick zoom (2.5x centered on tap location)
+- **Tap Photo Button**: Hide/show UI (photo mode)
+- **Tap Info Button**: Show gesture instructions
+- **Tap Fractal/Color Buttons**: Cycle through options
 
 #### Visual Feedback
 - **Gesture Start**: Subtle visual cue (e.g., slight brightness change)
@@ -230,10 +241,10 @@ Future expansion possibilities:
 - **Loading**: Elegant progress indicators (e.g., pulsing fractal preview)
 
 #### State Management
-- **Current Fractal Type**: Persist across sessions (LocalStorage)
-- **Last Zoom Region**: Optional—restore or start fresh (user preference)
-- **Color Preference**: Remember user's favorite color scheme (LocalStorage)
-- **Performance Settings**: Auto-detect device capabilities (not persisted)
+- **Current Fractal Type**: Persist across sessions (LocalStorage) - restored on next visit
+- **Color Preference**: Remember user's favorite color scheme (LocalStorage) - restored on next visit
+- **First-Time Defaults**: New users see Mandelbrot fractal with Inferno color scheme
+- **Performance Settings**: Auto-detect device capabilities (not persisted) - uses device memory for tier detection
 
 ---
 

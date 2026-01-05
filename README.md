@@ -8,7 +8,7 @@ FlyFract is a mobile-first web application that transforms fractal mathematics i
 
 ## Features
 
-- **7 Fractal Types**: Explore Mandelbrot, Julia Sets, Burning Ship, Tricorn, Newton, Phoenix, and Lyapunov fractals
+- **10 Fractal Types**: Explore Mandelbrot, Julia Sets, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov, Multibrot, Magnet, and Celtic fractals
 - **Mobile-First Design**: Optimized for touch interactions with intuitive pan, zoom, and rotate gestures
 - **High Performance**: GPU-accelerated rendering using WebGL for smooth 60fps on mobile devices
 - **Progressive Web App**: Installable on mobile devices with offline capability
@@ -80,6 +80,9 @@ php -S localhost:8000
 - **Newton Fractals**: Colorful root-finding visualization
 - **Phoenix Fractal**: Complex dynamic system patterns
 - **Lyapunov Fractal**: Stability visualization
+- **Multibrot**: Higher power Mandelbrot (z^4) with unique patterns
+- **Magnet**: Magnet Type 1 fractal with distinctive convergence patterns
+- **Celtic**: Celtic knot Mandelbrot variant with intricate knotwork designs
 
 ## Browser Support
 

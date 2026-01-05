@@ -189,11 +189,6 @@ html, body {
     background: #7c3aed;
 }
 
-/* Zoom Indicator - Hidden */
-#zoom-indicator {
-    display: none;
-}
-
 /* Photo Button - matches info button style */
 .photo-btn {
     position: fixed;

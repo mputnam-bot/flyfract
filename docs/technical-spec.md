@@ -10,8 +10,8 @@
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                    UI Layer (DOM)                       │    │
 │  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌─────────┐  │    │
-│  │  │ Fractal  │  │  Color   │  │   Zoom   │  │  Share  │  │    │
-│  │  │ Selector │  │ Switcher │  │ Indicator│  │ Button  │  │    │
+│  │  │ Fractal  │  │  Color   │  │   Photo  │  │   Info  │  │    │
+│  │  │ Selector │  │ Switcher │  │  Button  │  │ Button  │  │    │
 │  │  └──────────┘  └──────────┘  └──────────┘  └─────────┘  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                              │                                  │
@@ -28,6 +28,9 @@
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │    │
 │  │  │ View State  │  │  Quality    │  │  Animation      │  │    │
 │  │  │  Manager    │  │  Adapter    │  │  Orchestrator   │  │    │
+│  │  │ (Emulated   │  │ (Resolution │  │ (Unified Loop,  │  │    │
+│  │  │  Double     │  │  Scaling)   │  │  Iteration      │  │    │
+│  │  │  Precision) │  │             │  │  Smoothing)     │  │    │
 │  │  └─────────────┘  └─────────────┘  └─────────────────┘  │    │
 │  └─────────────────────────────────────────────────────────┘    │
 │                              │                                  │
@@ -93,13 +96,13 @@
 
 ### Precision Strategy
 
-WebGL uses 32-bit floats, limiting zoom to ~10^7. To achieve 10^12x zoom for v1 (10^15x future goal):
+WebGL uses 32-bit floats, limiting zoom to ~10^7. Deep zoom (double-precision emulation) was attempted but not successfully implemented due to GLSL compiler optimizations defeating the double-single arithmetic approach.
 
-1. **Emulated Double Precision**: Split 64-bit into two 32-bit floats in shader
-2. **Perturbation Theory**: Compute deltas from reference point (advanced, Phase 2)
-3. **Practical Limit**: Target 10^12x for v1 with emulated doubles
+**Current Status**: Standard 32-bit float precision (zoom limit ~10^7x)
 
-**Complete Emulated Double-Precision Functions** (in `shaders/common.glsl`):
+**Future Work**: See `docs/deep-zoom-spec.md` for details on the attempted implementation and potential alternative approaches.
+
+**Note**: The following code was part of the attempted implementation but is not currently active:
 
 ```glsl
 // Emulated double: value = high + low (stored as vec2)
@@ -210,13 +213,18 @@ for (int i = 0; i < MAX_ITER; i++) {
 
 ### Iteration Depth Strategy
 
-| Zoom Level | Base Iterations | During Gesture |
-|------------|-----------------|----------------|
-| 1x - 10x | 100 | 50 |
-| 10x - 1000x | 200 | 75 |
-| 1000x - 10^6x | 400 | 100 |
-| 10^6x - 10^9x | 800 | 150 |
-| 10^9x+ | 1200 | 200 |
+The system uses `AnimationOrchestrator` to manage iteration counts with smooth transitions:
+
+| Device Tier | Gesture Iterations | Static Iterations | Notes |
+|-------------|-------------------|-------------------|-------|
+| Low | 75 | 200 | Budget devices |
+| Mid | 100 | 300 | Standard devices |
+| High | 120-150 | 400 | Flagship devices |
+
+**Zoom-Adaptive Scaling**: Additional iterations are added based on zoom level:
+- Base iterations + (zoomLog × 12) up to maximum of 1500
+- Smooth interpolation prevents visible flickering during transitions
+- Iterations smoothly transition between gesture and static states over ~4-5 frames
 
 ---
 
@@ -473,7 +481,7 @@ class QualityAdapter {
 }
 ```
 
-**Note**: The system uses adaptive quality management rather than progressive refinement. QualityAdapter dynamically adjusts rendering resolution based on frame time, providing smooth performance while maintaining visual quality.
+**Note**: The system uses `AnimationOrchestrator` for unified animation management and `QualityAdapter` for adaptive quality. The orchestrator handles iteration smoothing to prevent flickering, while QualityAdapter manages resolution scaling based on frame time.
 
 #### 2. Resolution Scaling
 
@@ -482,7 +490,17 @@ class QualityAdapter {
 // Canvas resolution = clientWidth * devicePixelRatio * qualityFactor
 // devicePixelRatio is capped at 2.0 for performance
 // QualityAdapter adjusts qualityFactor (0.25 to 1.0) based on frame time
+// Note: Current implementation uses fixed resolution during gestures to prevent flicker
+// Only iterations change during gestures, not resolution
 ```
+
+#### 3. Animation Orchestrator
+
+The `AnimationOrchestrator` provides a unified animation loop that:
+- Handles all animations (zoom tweens, momentum, iteration transitions) in a single RAF loop
+- Smoothly interpolates iteration counts between gesture and static states
+- Buffers gesture inputs for atomic application per frame
+- Prevents frame desynchronization by coordinating all updates
 
 ### Memory Management
 
@@ -578,35 +596,49 @@ flyfract/
 │   │   └── storage.js      # LocalStorage persistence
 │   │
 │   ├── gestures/
-│   │   ├── controller.js   # Main gesture handler
-│   │   ├── pan.js          # Pan logic
-│   │   ├── pinch.js        # Pinch-to-zoom logic
-│   │   └── momentum.js     # Momentum physics
+│   │   ├── controller.js   # Unified gesture handler (touch + mouse)
+│   │   └── buffer.js       # Gesture input buffering
 │   │
 │   ├── render/
 │   │   ├── webgl.js        # WebGL context management
 │   │   ├── shaders.js      # Shader compilation/linking
 │   │   ├── pipeline.js     # Render orchestration
-│   │   ├── quality.js      # Adaptive quality
+│   │   ├── quality.js      # Adaptive quality (QualityAdapter)
 │   │   └── colors.js       # Color map management
 │   │
 │   ├── fractals/
-│   │   ├── mandelbrot.js   # Mandelbrot-specific logic
-│   │   ├── julia.js        # Julia set logic + presets
-│   │   └── burningship.js  # Burning Ship logic
+│   │   └── index.js        # FractalManager (all 10 fractals)
+│   │
+│   ├── core/
+│   │   ├── state.js        # ViewState (emulated double precision)
+│   │   ├── orchestrator.js # AnimationOrchestrator (unified loop)
+│   │   ├── device.js       # Device detection and tier classification
+│   │   ├── animator.js     # Animation tweening
+│   │   ├── storage.js      # State persistence
+│   │   ├── loading.js      # Loading screen
+│   │   ├── errors.js       # Error handling
+│   │   └── security.js     # Input validation
 │   │
 │   └── ui/
-│       ├── controls.js     # UI component management
-│       ├── selector.js     # Fractal selector
-│       ├── zoom.js         # Zoom indicator
-│       └── share.js        # Screenshot/share
+│       └── controls.js     # UIControls (fractal selector, color selector, photo, info)
 │
 ├── shaders/
-│   ├── vertex.glsl         # Simple fullscreen quad
+│   ├── vertex.glsl         # Simple fullscreen quad (shared by all fractals)
 │   ├── mandelbrot.glsl     # Mandelbrot fragment shader
 │   ├── julia.glsl          # Julia fragment shader
 │   ├── burningship.glsl    # Burning Ship fragment shader
-│   └── common.glsl         # Shared functions (precision, color)
+│   ├── tricorn.glsl        # Tricorn fragment shader
+│   ├── newton.glsl         # Newton fragment shader
+│   ├── phoenix.glsl        # Phoenix fragment shader
+│   ├── lyapunov.glsl       # Lyapunov fragment shader
+│   ├── multibrot.glsl      # Multibrot fragment shader
+│   ├── magnet.glsl         # Magnet Type 1 fragment shader
+│   └── celtic.glsl         # Celtic fragment shader
+│   ├── magnet.glsl         # Magnet Type 1 fragment shader
+│   └── celtic.glsl         # Celtic fragment shader
+│
+│   Note: Deep zoom (double-precision) was attempted but not successfully implemented.
+│   See docs/deep-zoom-spec.md for details.
 │
 └── assets/
     ├── icons/              # PWA icons
@@ -710,8 +742,9 @@ esbuild js/app.js --bundle --minify --outfile=dist/app.min.js
                               ▼
 5. POST-RENDER
    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-   │  Schedule   │     │   Update    │     │  Progressive│
-   │ Next Frame  │     │     UI      │     │  Refinement │
+   │  Schedule   │     │   Update    │     │  Animation   │
+   │ Next Frame  │     │     UI      │     │ Orchestrator │
+   │ (via RAF)   │     │   State     │     │   Tick       │
    └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
@@ -1387,13 +1420,13 @@ vec3 getColor(float t, float offset) {
 - [ ] Double-tap to zoom
 
 ### Phase 3: Production
-- [ ] Progressive refinement
-- [ ] Performance tier detection
-- [ ] PWA setup (manifest, service worker)
-- [ ] Screenshot capture
-- [ ] Share functionality
-- [ ] iOS/Android edge cases
-- [ ] Performance testing on target devices
+- [x] Animation Orchestrator (unified animation loop)
+- [x] Performance tier detection (simplified, based on device memory)
+- [x] PWA setup (manifest.json configured, service worker not yet implemented)
+- [ ] Screenshot capture (not implemented)
+- [ ] Share functionality (not implemented)
+- [x] iOS/Android edge cases (basic handling)
+- [x] Performance testing on target devices (basic validation)
 
 ---
 
@@ -1417,7 +1450,7 @@ vec3 getColor(float t, float offset) {
 - Frame time: Target <16.67ms for 60fps
 - QualityAdapter adjusts resolution dynamically to maintain performance
 
-**Note**: The system uses QualityAdapter for adaptive quality management rather than a separate PerformanceMonitor class. Frame time tracking is integrated into QualityAdapter for simplicity.
+**Note**: The system uses `AnimationOrchestrator` for unified animation management and `QualityAdapter` for adaptive quality. The orchestrator handles iteration smoothing and gesture buffering, while QualityAdapter manages resolution scaling. No separate PerformanceMonitor class exists.
 
 ---
 
@@ -1482,7 +1515,7 @@ class StateStorage {
 
 ### Persisted Data
 
-- **Fractal Type**: Current fractal (mandelbrot, julia, burningship)
+- **Fractal Type**: Current fractal (mandelbrot, julia, burningship, tricorn, newton, phoenix, lyapunov, multibrot, magnet, celtic)
 - **Color Scheme**: Selected color scheme name
 - **Last View** (optional): User preference to restore last position
   - Only saved if user explicitly enables (privacy consideration)

@@ -7,8 +7,8 @@ export class ViewState {
     constructor() {
         // Center coordinates using emulated double precision
         // Each component stored as { hi, lo } for extended precision
-        this.centerX = { hi: -0.5, lo: 0.0 };
-        this.centerY = { hi: 0.0, lo: 0.0 };
+        this.centerX = this.dsSplit(-0.5);
+        this.centerY = this.dsSplit(0.0);
 
         // Zoom stored as log2 for smooth interpolation
         this.zoomLog = 0;
@@ -63,9 +63,9 @@ export class ViewState {
         const fractalDX = -rotatedDX * scale;
         const fractalDY = rotatedDY * scale;
 
-        // Add to emulated double
-        this.centerX = this.dsAdd(this.centerX, { hi: fractalDX, lo: 0 });
-        this.centerY = this.dsAdd(this.centerY, { hi: fractalDY, lo: 0 });
+        // Add to emulated double (split delta to preserve precision)
+        this.centerX = this.dsAdd(this.centerX, this.dsSplit(fractalDX));
+        this.centerY = this.dsAdd(this.centerY, this.dsSplit(fractalDY));
 
         // Renormalize periodically
         this.centerX = this.dsRenorm(this.centerX);
@@ -106,10 +106,10 @@ export class ViewState {
         const fx = (screenX - this.screenWidth / 2) * scale;
         const fy = -(screenY - this.screenHeight / 2) * scale;
 
-        // Adjust center to keep that point stationary
+        // Adjust center to keep that point stationary (split delta to preserve precision)
         const adjust = 1 - 1 / factor;
-        this.centerX = this.dsAdd(this.centerX, { hi: fx * adjust, lo: 0 });
-        this.centerY = this.dsAdd(this.centerY, { hi: fy * adjust, lo: 0 });
+        this.centerX = this.dsAdd(this.centerX, this.dsSplit(fx * adjust));
+        this.centerY = this.dsAdd(this.centerY, this.dsSplit(fy * adjust));
 
         // Renormalize
         this.centerX = this.dsRenorm(this.centerX);
@@ -120,8 +120,8 @@ export class ViewState {
      * Reset to default view
      */
     reset() {
-        this.centerX = { hi: -0.5, lo: 0.0 };
-        this.centerY = { hi: 0.0, lo: 0.0 };
+        this.centerX = this.dsSplit(-0.5);
+        this.centerY = this.dsSplit(0.0);
         this.zoomLog = 0;
         this.zoom = 1.0;
         this.rotation = 0.0;
@@ -129,10 +129,11 @@ export class ViewState {
 
     /**
      * Set view to specific coordinates
+     * Uses dsSplit to preserve precision beyond float32 limits
      */
     setView(centerX, centerY, zoom) {
-        this.centerX = { hi: centerX, lo: 0.0 };
-        this.centerY = { hi: centerY, lo: 0.0 };
+        this.centerX = this.dsSplit(centerX);
+        this.centerY = this.dsSplit(centerY);
         this.zoom = zoom;
         this.zoomLog = Math.log2(zoom);
         this.rotation = 0.0;
@@ -173,35 +174,18 @@ export class ViewState {
         return maxIter;
     }
 
-    /**
-     * Format zoom level for display
-     */
-    formatZoom() {
-        const zoom = this.zoom;
-        
-        // Handle zoom out (zoom < 1)
-        if (zoom < 1.0) {
-            if (zoom >= 0.001) {
-                return `${zoom.toFixed(3)}x`;
-            }
-            // Very small zoom values
-            const exp = Math.floor(Math.log10(zoom));
-            const mantissa = zoom / Math.pow(10, exp);
-            return `${mantissa.toFixed(2)}×10^${exp}`;
-        }
-        
-        // Handle zoom in (zoom >= 1)
-        if (zoom < 1000) {
-            return `${zoom.toFixed(1)}x`;
-        }
-
-        // Very large zoom values
-        const exp = Math.floor(Math.log10(zoom));
-        const mantissa = zoom / Math.pow(10, exp);
-        return `${mantissa.toFixed(1)}×10^${exp}`;
-    }
-
     // ========== Emulated Double Precision Helpers ==========
+
+    /**
+     * Split a JavaScript double into hi+lo float32 components
+     * This is critical for deep zoom - it captures precision that would
+     * otherwise be lost when passing to WebGL as float32
+     */
+    dsSplit(x) {
+        const hi = Math.fround(x);  // Convert to float32 (loses precision)
+        const lo = x - hi;          // Capture what was lost (fits in float32)
+        return { hi, lo };
+    }
 
     /**
      * Add two emulated doubles

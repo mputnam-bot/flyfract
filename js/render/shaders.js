@@ -89,17 +89,3 @@ export function getUniformLocations(gl, program, names) {
     return locations;
 }
 
-/**
- * Get attribute locations for a program
- * @param {WebGLRenderingContext} gl
- * @param {WebGLProgram} program
- * @param {string[]} names
- * @returns {Object} Map of attribute names to locations
- */
-export function getAttributeLocations(gl, program, names) {
-    const locations = {};
-    for (const name of names) {
-        locations[name] = gl.getAttribLocation(program, name);
-    }
-    return locations;
-}

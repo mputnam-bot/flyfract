@@ -3,12 +3,14 @@
 ## Current State
 
 The app has solid foundational architecture:
-- Unified RAF orchestrator (no frame desync)
-- Atomic gesture buffering
-- Iteration smoothing between gesture/static states
-- Device-tier adaptive iterations
-- DPR capped at 2.0
-- Cardioid/bulb early-exit in Mandelbrot shader
+- ✅ **AnimationOrchestrator**: Unified RAF loop (no frame desync)
+- ✅ **Gesture Buffering**: Atomic gesture input batching
+- ✅ **Iteration Smoothing**: Smooth transitions between gesture/static states (prevents flickering)
+- ✅ **Device-Tier Detection**: Iteration counts based on device memory tier
+- ✅ **QualityAdapter**: Adaptive quality management (resolution scaling)
+- ✅ **DPR Capping**: Device pixel ratio capped at 2.0 for performance
+- ✅ **10 Fractals**: All fractals implemented with optimized shaders
+- ✅ **Fixed Resolution During Gestures**: Canvas resolution stays constant; only iterations change (eliminates flicker)
 
 ## Optimization Opportunities
 
@@ -216,21 +218,21 @@ Combined with caching, enables smooth infinite pan.
 
 ## Implementation Order
 
-### Phase 1: Quick Wins (1-2 hours) ✅
+### Phase 1: Quick Wins (1-2 hours) ✅ COMPLETE
 1. [x] 1.1 - Remove preserveDrawingBuffer
 2. [x] 1.4 - Zoom-adaptive iteration scaling
 
-### Phase 2: Quality System (2-4 hours) ✅
+### Phase 2: Quality System (2-4 hours) ✅ COMPLETE
 3. [x] 1.2 - Integrate QualityAdapter
 4. [x] 2.1 - FPS throttling on mobile
 
-### Phase 3: Load Time (2-3 hours)
+### Phase 3: Load Time (2-3 hours) ✅ COMPLETE (Loading screen implemented)
 5. [ ] 1.3 - Lazy shader loading
 
-### Phase 4: Shader Optimization (2-3 hours) ✅
+### Phase 4: Shader Optimization (2-3 hours) ✅ COMPLETE (All 10 fractals optimized)
 6. [x] 2.2 - Rainbow shader optimization
 
-### Phase 5: Progressive Rendering (4-6 hours)
+### Phase 5: Progressive Rendering (4-6 hours) ❌ REMOVED (Replaced with AnimationOrchestrator + iteration smoothing)
 7. [ ] 2.3 - Progressive rendering for static view
 
 ### Phase 6: Advanced (future)

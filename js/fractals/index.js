@@ -116,40 +116,36 @@ export class FractalManager {
      */
     async loadAll(onProgress) {
         const types = Object.keys(FRACTAL_TYPES);
+        const total = types.length;
         let loaded = 0;
+
+        const uniformList = [
+            'u_resolution',
+            'u_center',
+            'u_zoom',
+            'u_rotation',
+            'u_maxIter',
+            'u_colorOffset',
+            'u_juliaC',
+            'u_colorA',
+            'u_colorB',
+            'u_colorC',
+            'u_colorD',
+            'u_isRainbow'
+        ];
 
         for (const type of types) {
             try {
-                console.log(`Loading shader for ${type}...`);
                 const fractal = FRACTAL_TYPES[type];
                 const fragmentSource = await loadShaderSource(fractal.shader);
-                console.log(`Shader source loaded for ${type}, compiling...`);
                 const program = createProgram(this.gl, this.vertexSource, fragmentSource);
-                console.log(`Shader compiled for ${type}`);
-
-                // Get uniform locations
-                const uniforms = getUniformLocations(this.gl, program, [
-                    'u_resolution',
-                    'u_center',
-                    'u_zoom',
-                    'u_rotation',
-                    'u_maxIter',
-                    'u_colorOffset',
-                    'u_juliaC',
-                    'u_colorA',
-                    'u_colorB',
-                    'u_colorC',
-                    'u_colorD',
-                    'u_isRainbow'
-                ]);
-
+                const uniforms = getUniformLocations(this.gl, program, uniformList);
                 this.programs.set(type, { program, uniforms });
 
                 loaded++;
                 if (onProgress) {
-                    onProgress(loaded / types.length);
+                    onProgress(loaded / total);
                 }
-                console.log(`Completed ${type} (${loaded}/${types.length})`);
             } catch (error) {
                 console.error(`Failed to load shader for ${type}:`, error);
                 throw new Error(`Failed to load shader for ${type}: ${error.message}`);

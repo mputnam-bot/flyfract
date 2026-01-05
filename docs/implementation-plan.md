@@ -219,13 +219,13 @@ This document breaks down the FlyFract implementation into three phases, with sp
   - Burning Ship iteration (abs(z) before squaring)
   - Y-axis flip for correct orientation
 - [x] Create `shaders/tricorn.glsl`, `shaders/newton.glsl`, `shaders/phoenix.glsl`, `shaders/lyapunov.glsl`:
-  - All 7 fractals implemented
+  - All 10 fractals implemented (Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov, Multibrot, Magnet, Celtic)
 - [x] Create `js/fractals/index.js`:
   - FractalManager registry/manager
   - Switch between fractal types
   - Maintain view state per fractal type
 - [x] Update render pipeline to support fractal switching
-- [x] Test: All 7 fractals render correctly (Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov)
+- [x] Test: All 10 fractals render correctly (Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov, Multibrot, Magnet, Celtic)
 
 ### 2.2 Fractal Selector UI (30 minutes)
 
@@ -471,7 +471,7 @@ After each phase, verify:
 
 The implementation is complete when:
 
-1. ✅ All 7 fractal types render correctly (Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov)
+1. ✅ All 10 fractal types render correctly (Mandelbrot, Julia, Burning Ship, Tricorn, Newton, Phoenix, Lyapunov, Multibrot, Magnet, Celtic)
 2. ✅ Pan and pinch gestures are smooth (60fps)
 3. ✅ Color schemes apply correctly (8 color palettes)
 4. ✅ UI controls are functional and unobtrusive (fractal selector, color selector, photo mode, info button)

@@ -6,7 +6,7 @@
 console.log('app.js module loading...');
 
 import { WebGLContext } from './render/webgl.js';
-import { loadShaderSource, getUniformLocations, getAttributeLocations } from './render/shaders.js';
+import { loadShaderSource } from './render/shaders.js';
 import { QualityAdapter } from './render/quality.js';
 import { ViewState } from './core/state.js';
 import { GestureController } from './gestures/controller.js';
@@ -44,6 +44,7 @@ class FlyFractApp {
         // Render state
         this.isGesturing = false;
         this.quadBuffer = null;
+
     }
 
     /**
@@ -124,15 +125,20 @@ class FlyFractApp {
             );
             console.log(`Device tier: ${getDeviceTier()}, iterations: gesture=${iterationTargets.gesture}, static=${iterationTargets.static}`);
 
-            // Load saved state
+            // Load saved state (or use defaults for first-time users)
             const savedState = this.storage.load();
             if (savedState) {
+                // Restore user's last selections
                 if (savedState.fractalType && FRACTAL_TYPES[savedState.fractalType]) {
                     this.fractalManager.setType(savedState.fractalType);
                 }
                 if (savedState.colorScheme && COLOR_SCHEMES[savedState.colorScheme]) {
                     this.colorManager.setScheme(savedState.colorScheme);
                 }
+            } else {
+                // First-time user: default to Mandelbrot and Inferno
+                this.fractalManager.setType('mandelbrot');
+                this.colorManager.setScheme('inferno');
             }
 
             // Set default view for current fractal

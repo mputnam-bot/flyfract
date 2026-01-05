@@ -75,7 +75,7 @@ export const COLOR_SCHEMES = {
 
 export class ColorManager {
     constructor() {
-        this.currentScheme = 'cosmic';
+        this.currentScheme = 'inferno'; // Default to inferno
         this.colorOffset = 0.0;
         this.animating = false;
     }

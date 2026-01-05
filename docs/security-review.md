@@ -271,7 +271,7 @@ function validateURLParams(params) {
     }
 
     // Fractal type validation (whitelist)
-    const validFractals = ['mandelbrot', 'julia', 'burningship', 'tricorn', 'newton', 'phoenix', 'lyapunov'];
+    const validFractals = ['mandelbrot', 'julia', 'burningship', 'tricorn', 'newton', 'phoenix', 'lyapunov', 'multibrot', 'magnet', 'celtic'];
     if (validFractals.includes(params.fractal)) {
         validated.fractal = params.fractal;
     }

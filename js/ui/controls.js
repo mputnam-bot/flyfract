@@ -209,7 +209,7 @@ export class UIControls {
             clearTimeout(this.hideTimeout);
             this.hideTimeout = null;
         }
-        
+
         this.container.classList.add('hidden');
         if (this.elements.photoBtn) {
             this.elements.photoBtn.classList.add('hidden');
@@ -219,7 +219,7 @@ export class UIControls {
         }
         this.visible = false;
         this.allHidden = true;
-        
+
         // Store hide time to prevent immediate re-show
         this.lastHideTime = Date.now();
     }
