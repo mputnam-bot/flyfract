@@ -143,9 +143,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 - Inspired by the mathematical beauty of fractals
 - Built with modern web standards and WebGL
-- Designed for mobile-first exploration
+- Created as an exploration of AI-assisted mobile-first development
 
 ---
 
-*Last updated: January 04, 2026*
+*Last updated: January 05, 2026*
 
