@@ -63,6 +63,30 @@ export const FRACTAL_TYPES = {
         defaultCenter: { x: 2.0, y: 2.0 },
         defaultZoom: 0.5,
         description: 'Lyapunov exponent fractal'
+    },
+    multibrot: {
+        id: 'multibrot',
+        name: 'Multibrot',
+        shader: 'shaders/multibrot.glsl',
+        defaultCenter: { x: 0.0, y: 0.0 },
+        defaultZoom: 1.0,
+        description: 'Higher power Mandelbrot (z^4)'
+    },
+    magnet: {
+        id: 'magnet',
+        name: 'Magnet',
+        shader: 'shaders/magnet.glsl',
+        defaultCenter: { x: 0.0, y: 0.0 },
+        defaultZoom: 1.0,
+        description: 'Magnet Type 1 fractal'
+    },
+    celtic: {
+        id: 'celtic',
+        name: 'Celtic',
+        shader: 'shaders/celtic.glsl',
+        defaultCenter: { x: -0.5, y: 0.0 },
+        defaultZoom: 1.0,
+        description: 'Celtic knot Mandelbrot variant'
     }
 };
 
@@ -95,30 +119,39 @@ export class FractalManager {
         let loaded = 0;
 
         for (const type of types) {
-            const fractal = FRACTAL_TYPES[type];
-            const fragmentSource = await loadShaderSource(fractal.shader);
-            const program = createProgram(this.gl, this.vertexSource, fragmentSource);
+            try {
+                console.log(`Loading shader for ${type}...`);
+                const fractal = FRACTAL_TYPES[type];
+                const fragmentSource = await loadShaderSource(fractal.shader);
+                console.log(`Shader source loaded for ${type}, compiling...`);
+                const program = createProgram(this.gl, this.vertexSource, fragmentSource);
+                console.log(`Shader compiled for ${type}`);
 
-            // Get uniform locations
-            const uniforms = getUniformLocations(this.gl, program, [
-                'u_resolution',
-                'u_center',
-                'u_zoom',
-                'u_rotation',
-                'u_maxIter',
-                'u_colorOffset',
-                'u_juliaC',
-                'u_colorA',
-                'u_colorB',
-                'u_colorC',
-                'u_colorD'
-            ]);
+                // Get uniform locations
+                const uniforms = getUniformLocations(this.gl, program, [
+                    'u_resolution',
+                    'u_center',
+                    'u_zoom',
+                    'u_rotation',
+                    'u_maxIter',
+                    'u_colorOffset',
+                    'u_juliaC',
+                    'u_colorA',
+                    'u_colorB',
+                    'u_colorC',
+                    'u_colorD'
+                ]);
 
-            this.programs.set(type, { program, uniforms });
+                this.programs.set(type, { program, uniforms });
 
-            loaded++;
-            if (onProgress) {
-                onProgress(loaded / types.length);
+                loaded++;
+                if (onProgress) {
+                    onProgress(loaded / types.length);
+                }
+                console.log(`Completed ${type} (${loaded}/${types.length})`);
+            } catch (error) {
+                console.error(`Failed to load shader for ${type}:`, error);
+                throw new Error(`Failed to load shader for ${type}: ${error.message}`);
             }
         }
     }

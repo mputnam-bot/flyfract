@@ -68,9 +68,18 @@ export class ErrorHandler {
      */
     showLoadError(error) {
         console.error('Load error:', error);
+        const errorMessage = error?.message || String(error) || 'Unknown error';
+        const detailedMessage = errorMessage.includes('Failed to fetch') || errorMessage.includes('404') 
+            ? `Failed to load resource: ${errorMessage}. Make sure you're running a local server (not opening the file directly).`
+            : errorMessage.includes('shader')
+            ? `Shader error: ${errorMessage}`
+            : errorMessage.includes('module')
+            ? `Module loading error: ${errorMessage}. Check browser console for details.`
+            : `Error: ${errorMessage}. Check browser console (F12) for more details.`;
+        
         this.show(
             'Loading Failed',
-            'Failed to load required resources. Please check your connection and try again.'
+            detailedMessage
         );
     }
 

@@ -3,6 +3,8 @@
  * Main Application Entry Point (Phase 2)
  */
 
+console.log('app.js module loading...');
+
 import { WebGLContext } from './render/webgl.js';
 import { loadShaderSource, getUniformLocations, getAttributeLocations } from './render/shaders.js';
 import { QualityAdapter } from './render/quality.js';
@@ -48,6 +50,15 @@ class FlyFractApp {
      * Initialize the application
      */
     async init() {
+        // Add timeout to detect hanging initialization
+        let initTimeout = setTimeout(() => {
+            console.error('Initialization timeout - taking longer than 30 seconds');
+            this.errorHandler.show(
+                'Initialization Timeout',
+                'The app is taking longer than expected to load. Check the browser console (F12) for errors. This might be due to shader compilation issues or network problems.'
+            );
+        }, 30000);
+        
         try {
             // Show loading screen
             this.loadingScreen.show();
@@ -80,23 +91,30 @@ class FlyFractApp {
             this.loadingScreen.updateProgress(20);
 
             // Load vertex shader (shared by all fractals)
+            console.log('Loading vertex shader...');
             const vertexSource = await loadShaderSource('shaders/vertex.glsl');
+            console.log('Vertex shader loaded');
 
             this.loadingScreen.updateProgress(30);
 
             // Initialize fractal manager and load all shaders
+            console.log('Initializing fractal manager...');
             this.fractalManager = new FractalManager(this.gl, vertexSource);
+            console.log('Loading all fractal shaders...');
             await this.fractalManager.loadAll((progress) => {
                 this.loadingScreen.updateProgress(30 + progress * 40);
             });
+            console.log('All shaders loaded');
 
             this.loadingScreen.updateProgress(70);
 
             // Initialize managers
+            console.log('Initializing managers...');
             this.viewState = new ViewState();
             this.quality = new QualityAdapter();
             this.colorManager = new ColorManager();
             this.orchestrator = new AnimationOrchestrator();
+            console.log('Managers initialized');
 
             // Configure iteration targets based on device tier
             const iterationTargets = getIterationTargets();
@@ -118,18 +136,22 @@ class FlyFractApp {
             }
 
             // Set default view for current fractal
+            console.log('Resetting view...');
             this.resetView();
 
             // Create fullscreen quad
+            console.log('Creating quad buffer...');
             this.createQuad();
 
             this.loadingScreen.updateProgress(80);
 
             // Initialize UI
+            console.log('Initializing UI...');
             this.uiControls = new UIControls();
             this.uiControls.init();
             this.setupUICallbacks();
             this.updateUIState();
+            console.log('UI initialized');
 
             // Julia parameter indicator removed - no longer showing equations
 
@@ -162,9 +184,14 @@ class FlyFractApp {
             }, 200);
 
             console.log(`FlyFract initialized in ${this.loadingScreen.getDuration().toFixed(0)}ms`);
+            
+            // Clear timeout on successful initialization
+            clearTimeout(initTimeout);
 
         } catch (error) {
             console.error('Initialization error:', error);
+            console.error('Error stack:', error.stack);
+            clearTimeout(initTimeout);
             this.errorHandler.showLoadError(error);
         }
     }
@@ -664,7 +691,22 @@ class FlyFractApp {
 }
 
 // Start app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+console.log('app.js module loaded, checking DOM state...');
+const startApp = () => {
+    console.log('Starting app, creating FlyFractApp...');
     const app = new FlyFractApp();
+    window.app = app; // Expose for debugging and thumbnail generation
+    console.log('App created, calling init()...');
     app.init();
-});
+};
+
+if (document.readyState === 'loading') {
+    console.log('DOM still loading, waiting for DOMContentLoaded...');
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded fired');
+        startApp();
+    });
+} else {
+    console.log('DOM already ready, starting app immediately');
+    startApp();
+}

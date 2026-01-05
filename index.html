@@ -7,6 +7,7 @@
     <meta name="description" content="Explore infinite fractal beauty with intuitive touch gestures">
 
     <!-- Content Security Policy -->
+    <!-- Note: frame-ancestors must be set via HTTP header, not meta tag -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
         script-src 'self' 'unsafe-inline';
@@ -15,7 +16,6 @@
         font-src 'self';
         connect-src 'self' https://vitals.vercel-insights.com https://speed-insights.vercel.com;
         worker-src 'self';
-        frame-ancestors 'none';
         form-action 'none';
         base-uri 'self';
         object-src 'none';
@@ -25,11 +25,18 @@
     <title>FlyFract</title>
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="css/styles.css">
-    <!-- Vercel Web Analytics -->
+    <!-- Vercel Web Analytics (only in production) -->
     <script>
-      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      // Only load Vercel analytics if running on Vercel
+      if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('vercel.com')) {
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+        const vaScript = document.createElement('script');
+        vaScript.defer = true;
+        vaScript.src = '/_vercel/insights/script.js';
+        vaScript.onerror = () => {}; // Silently fail if not available
+        document.head.appendChild(vaScript);
+      }
     </script>
-    <script defer src="/_vercel/insights/script.js"></script>
 </head>
 <body>
     <!-- Loading Screen -->
@@ -60,12 +67,62 @@
     <div id="zoom-indicator">1x</div>
 
     <!-- App Entry Point -->
-    <script type="module" src="js/app.js"></script>
-
-    <!-- Vercel Speed Insights -->
-    <script>
-      window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+    <script type="module">
+        console.log('Module script started');
+        
+        // Global error handler for module loading failures
+        window.addEventListener('error', (event) => {
+            console.error('Global error caught:', event);
+            if (event.target && event.target.tagName === 'SCRIPT' && event.target.type === 'module') {
+                console.error('Module loading error:', event);
+                const errorScreen = document.getElementById('error-screen');
+                const errorTitle = document.getElementById('error-title');
+                const errorMessage = document.getElementById('error-message');
+                if (errorScreen && errorTitle && errorMessage) {
+                    errorTitle.textContent = 'Module Loading Failed';
+                    errorMessage.textContent = `Failed to load JavaScript module: ${event.target.src || 'unknown'}. Make sure you're running a local server (not opening the file directly). Check browser console (F12) for details.`;
+                    errorScreen.style.display = 'flex';
+                    const loadingScreen = document.getElementById('loading-screen');
+                    if (loadingScreen) {
+                        loadingScreen.style.display = 'none';
+                    }
+                }
+            }
+        });
+        
+        // Import and start app
+        console.log('About to import app.js...');
+        import('./js/app.js').then(() => {
+            console.log('app.js imported successfully');
+        }).catch((error) => {
+            console.error('Failed to import app.js:', error);
+            console.error('Error details:', error.message, error.stack);
+            const errorScreen = document.getElementById('error-screen');
+            const errorTitle = document.getElementById('error-title');
+            const errorMessage = document.getElementById('error-message');
+            if (errorScreen && errorTitle && errorMessage) {
+                errorTitle.textContent = 'Module Import Failed';
+                errorMessage.textContent = `Failed to import app module: ${error.message}. Make sure you're running a local server. Check browser console (F12) for details.`;
+                errorScreen.style.display = 'flex';
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+            }
+        });
     </script>
-    <script defer src="/_vercel/speed-insights/script.js"></script>
+
+    <!-- Vercel Speed Insights (only in production) -->
+    <script>
+      // Only load Vercel speed insights if running on Vercel
+      if (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('vercel.com')) {
+        window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+        const siScript = document.createElement('script');
+        siScript.defer = true;
+        siScript.src = '/_vercel/speed-insights/script.js';
+        siScript.onerror = () => {}; // Silently fail if not available
+        document.body.appendChild(siScript);
+      }
+    </script>
 </body>
 </html>

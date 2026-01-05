@@ -54,7 +54,10 @@ export class UIControls {
             tricorn: 'thumbnails/tricorn.jpeg',
             newton: 'thumbnails/newton.jpeg',
             phoenix: 'thumbnails/phoenix.jpeg',
-            lyapunov: 'thumbnails/lyapunov.jpeg'
+            lyapunov: 'thumbnails/lyapunov.jpeg',
+            multibrot: 'thumbnails/multibrot.jpeg',
+            magnet: 'thumbnails/magnet.jpeg',
+            celtic: 'thumbnails/celtic.jpeg'
         };
         return thumbnails[fractalId] || thumbnails.mandelbrot;
     }
