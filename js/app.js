@@ -849,8 +849,11 @@ class FlyFractApp {
         const frameTime = performance.now() - frameStart;
         this.quality.update(frameTime);
 
-        // Update zoom indicator
-        this.updateZoomIndicator(isDeepZoom);
+        // Update zoom indicator - show "deep" based on zoom level, not current shader
+        // (during gestures we temporarily disable deep zoom for performance)
+        const shouldShowDeep = ReferenceOrbit.shouldUseDeepZoom(this.viewState.zoomLog) &&
+                               this.fractalManager.supportsDeepZoom();
+        this.updateZoomIndicator(shouldShowDeep);
     }
 
     /**
