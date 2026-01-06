@@ -18,6 +18,7 @@ import { ColorManager, COLOR_SCHEMES } from './render/colors.js';
 import { UIControls } from './ui/controls.js';
 import { AnimationOrchestrator, animateZoomWithOrchestrator } from './core/orchestrator.js';
 import { isMobileDevice, getIterationTargets, getDeviceTier } from './core/device.js';
+import { DeepZoomManager, ReferenceOrbit } from './core/reference-orbit.js';
 
 class FlyFractApp {
     constructor() {
@@ -32,6 +33,7 @@ class FlyFractApp {
         this.colorManager = null;
         this.uiControls = null;
         this.orchestrator = null;
+        this.deepZoomManager = null;
 
         this.loadingScreen = new LoadingScreen();
         this.errorHandler = new ErrorHandler();
@@ -45,6 +47,12 @@ class FlyFractApp {
         this.isGesturing = false;
         this.quadBuffer = null;
 
+        // Deep zoom state
+        this.deepZoomPendingUpdate = false;
+        this.lastDeepZoomUpdate = 0;
+
+        // Zoom indicator element
+        this.zoomIndicator = null;
     }
 
     /**
@@ -79,6 +87,9 @@ class FlyFractApp {
             if (!this.canvas) {
                 throw new Error('Canvas element not found');
             }
+
+            // Get zoom indicator element
+            this.zoomIndicator = document.getElementById('zoom-indicator');
 
             // Initialize WebGL context
             this.glContext = new WebGLContext(this.canvas);
@@ -115,6 +126,18 @@ class FlyFractApp {
             this.quality = new QualityAdapter();
             this.colorManager = new ColorManager();
             this.orchestrator = new AnimationOrchestrator();
+
+            // Initialize deep zoom manager
+            this.deepZoomManager = new DeepZoomManager();
+            this.deepZoomManager.init(this.gl);
+
+            // Log deep zoom status prominently
+            if (this.fractalManager.hasDeepZoom()) {
+                console.log('%c Deep zoom ENABLED - shader loaded successfully', 'background: green; color: white; padding: 2px 5px;');
+            } else {
+                console.error('%c Deep zoom DISABLED - shader failed to load! Check errors above.', 'background: red; color: white; padding: 2px 5px;');
+            }
+
             console.log('Managers initialized');
 
             // Configure iteration targets based on device tier
@@ -157,6 +180,18 @@ class FlyFractApp {
             this.uiControls.init();
             this.setupUICallbacks();
             this.updateUIState();
+
+            // Handle photo mode changes for zoom indicator
+            this.uiControls.onPhotoModeChange = (isPhotoMode) => {
+                if (this.zoomIndicator) {
+                    if (isPhotoMode) {
+                        this.zoomIndicator.classList.add('hidden');
+                    } else {
+                        this.zoomIndicator.classList.remove('hidden');
+                    }
+                }
+            };
+
             console.log('UI initialized');
 
             // Julia parameter indicator removed - no longer showing equations
@@ -615,14 +650,73 @@ class FlyFractApp {
     }
 
     /**
+     * Check if deep zoom should be enabled and update reference orbit if needed
+     */
+    updateDeepZoom() {
+        const zoomLog = this.viewState.zoomLog;
+        const shouldUseDeep = ReferenceOrbit.shouldUseDeepZoom(zoomLog) &&
+                             this.fractalManager.supportsDeepZoom();
+
+        // During gestures, don't use deep zoom to maintain smoothness
+        // The standard shader will pixelate at deep zoom, but that's acceptable
+        // during interactive manipulation
+        if (this.isGesturing) {
+            this.fractalManager.setDeepZoom(false);
+            this.deepZoomPendingUpdate = shouldUseDeep;  // Remember to update after gesture
+            return;
+        }
+
+        // Enable/disable deep zoom in fractal manager
+        this.fractalManager.setDeepZoom(shouldUseDeep);
+
+        if (!shouldUseDeep) {
+            this.deepZoomPendingUpdate = false;
+            return;
+        }
+
+        // Get center coordinates
+        const centerX = this.viewState.centerX.hi + this.viewState.centerX.lo;
+        const centerY = this.viewState.centerY.hi + this.viewState.centerY.lo;
+        const maxIter = this.orchestrator.getIterations();
+
+        // Check if we need to update the reference orbit
+        const now = performance.now();
+        const needsUpdate = this.deepZoomManager.referenceOrbit.needsUpdate(
+            centerX, centerY, zoomLog, maxIter
+        );
+
+        if (needsUpdate || this.deepZoomPendingUpdate) {
+            // Throttle updates to avoid excessive computation
+            // Use longer throttle for mobile devices
+            const throttleTime = isMobileDevice() ? 200 : 100;
+
+            if (now - this.lastDeepZoomUpdate > throttleTime) {
+                console.log(`Computing reference orbit at zoom 2^${zoomLog.toFixed(1)}`);
+
+                // Use sync update - it's fast enough for typical zoom levels
+                // For very deep zoom (zoomLog > 50), we could use async
+                this.deepZoomManager.updateSync(centerX, centerY, zoomLog, maxIter);
+                this.lastDeepZoomUpdate = now;
+                this.deepZoomPendingUpdate = false;
+
+                console.log(`Reference orbit computed: ${this.deepZoomManager.referenceOrbit.orbitLength} iterations`);
+            }
+        }
+    }
+
+    /**
      * Render frame
      */
     render() {
         const frameStart = performance.now();
         const gl = this.gl;
 
-        // Get current program
-        const { program, uniforms } = this.fractalManager.getCurrent();
+        // Update deep zoom state if needed
+        this.updateDeepZoom();
+
+        // Get current program (may be deep zoom shader if enabled)
+        const current = this.fractalManager.getCurrent();
+        const { program, uniforms, isDeepZoom } = current;
         gl.useProgram(program);
 
         // Adaptive quality: scale resolution based on performance
@@ -647,7 +741,7 @@ class FlyFractApp {
         // This smoothly interpolates between gesture and static iteration counts
         const maxIter = this.orchestrator.getIterations();
 
-        // Set uniforms
+        // Set standard uniforms
         gl.uniform2f(uniforms.u_resolution, width, height);
         gl.uniform4f(
             uniforms.u_center,
@@ -688,6 +782,60 @@ class FlyFractApp {
             gl.uniform2f(uniforms.u_juliaC, juliaC[0], juliaC[1]);
         }
 
+        // Deep zoom specific uniforms
+        if (isDeepZoom && this.deepZoomManager.isEnabled) {
+            const deepData = this.deepZoomManager.getShaderData();
+
+            if (deepData && deepData.enabled && deepData.orbitTexture) {
+                // Enable deep zoom in shader
+                gl.uniform1i(uniforms.u_deepZoomEnabled, 1);
+
+                // Reference point (hi/lo precision)
+                gl.uniform4f(
+                    uniforms.u_refPoint,
+                    deepData.refRe.hi,
+                    deepData.refRe.lo,
+                    deepData.refIm.hi,
+                    deepData.refIm.lo
+                );
+
+                // Orbit texture
+                gl.activeTexture(gl.TEXTURE0);
+                gl.bindTexture(gl.TEXTURE_2D, deepData.orbitTexture.texture);
+                gl.uniform1i(uniforms.u_orbitTexture, 0);
+                gl.uniform2f(
+                    uniforms.u_orbitTextureSize,
+                    deepData.orbitTexture.width,
+                    deepData.orbitTexture.height
+                );
+                gl.uniform1i(uniforms.u_orbitLength, deepData.orbitLength);
+
+                // Debug logging (remove after fixing)
+                if (!this._deepZoomLoggedOnce) {
+                    console.log('Deep zoom active:', {
+                        orbitLength: deepData.orbitLength,
+                        textureSize: [deepData.orbitTexture.width, deepData.orbitTexture.height],
+                        refPoint: [deepData.refRe.hi, deepData.refIm.hi]
+                    });
+                    this._deepZoomLoggedOnce = true;
+                }
+            } else {
+                // Data not ready - fall back to standard
+                gl.uniform1i(uniforms.u_deepZoomEnabled, 0);
+                if (!this._deepZoomWarningLogged) {
+                    console.warn('Deep zoom shader active but data not ready:', {
+                        hasDeepData: !!deepData,
+                        enabled: deepData?.enabled,
+                        hasTexture: !!deepData?.orbitTexture
+                    });
+                    this._deepZoomWarningLogged = true;
+                }
+            }
+        } else if (uniforms.u_deepZoomEnabled !== undefined) {
+            // Explicitly disable deep zoom if uniform exists
+            gl.uniform1i(uniforms.u_deepZoomEnabled, 0);
+        }
+
         // Setup vertex attribute
         gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
         const posLoc = gl.getAttribLocation(program, 'a_position');
@@ -700,6 +848,63 @@ class FlyFractApp {
         // Track frame time for adaptive quality
         const frameTime = performance.now() - frameStart;
         this.quality.update(frameTime);
+
+        // Update zoom indicator
+        this.updateZoomIndicator(isDeepZoom);
+    }
+
+    /**
+     * Format zoom level for display (e.g., "1x", "200Kx", "1.5Mx", "2.3Bx")
+     */
+    formatZoom(zoom) {
+        if (zoom < 1) {
+            // Zoom out - show as decimal
+            if (zoom >= 0.001) {
+                return `${zoom.toFixed(3)}x`;
+            }
+            // Very small zoom values
+            const exp = Math.floor(Math.log10(zoom));
+            const mantissa = zoom / Math.pow(10, exp);
+            return `${mantissa.toFixed(2)}×10^${exp}`;
+        }
+
+        // Zoom in
+        if (zoom < 1000) {
+            return `${zoom.toFixed(1)}x`;
+        } else if (zoom < 1000000) {
+            return `${(zoom / 1000).toFixed(0)}Kx`;
+        } else if (zoom < 1000000000) {
+            return `${(zoom / 1000000).toFixed(1)}Mx`;
+        } else if (zoom < 1000000000000) {
+            return `${(zoom / 1000000000).toFixed(1)}Bx`;
+        } else {
+            // Very large zoom values - use scientific notation
+            const exp = Math.floor(Math.log10(zoom));
+            const mantissa = zoom / Math.pow(10, exp);
+            return `${mantissa.toFixed(1)}×10^${exp}x`;
+        }
+    }
+
+    /**
+     * Update zoom indicator display
+     */
+    updateZoomIndicator(isDeepZoom = false) {
+        if (!this.zoomIndicator) return;
+
+        // Hide zoom indicator in photo mode (when all UI is hidden)
+        if (this.uiControls && this.uiControls.allHidden) {
+            this.zoomIndicator.classList.add('hidden');
+            return;
+        }
+
+        const zoom = this.viewState.zoom;
+        const formatted = this.formatZoom(zoom);
+        const text = isDeepZoom ? `${formatted} deep` : formatted;
+        
+        this.zoomIndicator.textContent = text;
+        
+        // Show indicator (remove hidden class if present)
+        this.zoomIndicator.classList.remove('hidden');
     }
 }
 

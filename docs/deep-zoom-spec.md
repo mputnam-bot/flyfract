@@ -1,8 +1,76 @@
 # FlyFract - Deep Zoom Implementation Spec
 
-## Status: NOT IMPLEMENTED
+## Status: IMPLEMENTED (Perturbation Theory)
 
-Deep zoom was attempted but did not work due to GLSL compiler optimizations defeating the double-single (DS) arithmetic approach. This document records our findings for future reference.
+Deep zoom is now implemented using perturbation theory, which avoids the GLSL compiler optimization issues that defeated the double-single (DS) arithmetic approach.
+
+### Current Implementation
+
+The perturbation theory approach works by:
+1. Computing a reference orbit at the center point using arbitrary precision (CPU)
+2. GPU computes small deltas from the reference using single precision
+3. This allows zoom depths far beyond single-precision limits
+
+**Files added:**
+- `js/core/bigfloat.js` - Arbitrary precision floating point library
+- `js/core/reference-orbit.js` - Reference orbit computation and management
+- `shaders/mandelbrot_deep.glsl` - Perturbation theory shader
+
+**Deep zoom activates automatically at zoomLog > 20 (approximately 10^6x zoom).**
+
+### How It Works
+
+#### 1. BigFloat Arbitrary Precision (bigfloat.js)
+
+Custom arbitrary precision floating point using:
+- Mantissa stored as array of float64 limbs (~26 bits each)
+- Separate exponent for scale
+- Supports add, subtract, multiply operations
+- `BigComplex` class for complex number operations
+
+Precision automatically scales with zoom level (4-16 limbs = 104-416 bits).
+
+#### 2. Reference Orbit Computation (reference-orbit.js)
+
+The `ReferenceOrbit` class:
+- Computes Mandelbrot orbit Z_n at center point using BigFloat
+- Stores orbit values as Float32 for GPU transfer
+- Creates float texture containing: [Z_n.re, Z_n.im, 2*Z_n.re, 2*Z_n.im]
+- `DeepZoomManager` handles caching and texture management
+
+#### 3. Perturbation Shader (mandelbrot_deep.glsl)
+
+Instead of computing z = z² + c directly, uses:
+```
+δ_{n+1} = 2 * Z_n * δ_n + δ_n² + δ_c
+```
+Where:
+- Z_n = reference orbit value from texture
+- δ_n = pixel's delta from reference (single precision)
+- δ_c = pixel_c - reference_c
+
+**Glitch Detection:** If δ becomes large relative to Z_n, falls back to direct iteration.
+
+### Performance Optimizations
+
+1. **Deferred Computation**: Reference orbit only computed after gestures end
+2. **Throttled Updates**: Minimum 100-200ms between orbit updates
+3. **Gesture Fallback**: Uses standard shader during pinch/pan for smoothness
+4. **Mobile Aware**: Longer throttle times on mobile devices
+
+### Supported Fractals
+
+Currently only Mandelbrot supports deep zoom. Other fractals would need their own perturbation formulas.
+
+### Zoom Limits
+
+- Standard precision: ~10^6x (zoomLog ≈ 20)
+- Deep zoom: ~10^30x (zoomLog ≈ 100, depends on precision)
+- Theoretical: Limited by BigFloat precision, not GPU
+
+---
+
+## Previous Attempt (Double-Single Arithmetic)
 
 ---
 

@@ -15,6 +15,7 @@ export class GestureController {
         // Touch tracking
         this.touches = new Map();
         this.state = 'idle'; // 'idle', 'pan', 'pinch', 'momentum'
+        this.gestureStarted = false; // Track if gesture has actually started (movement detected)
 
         // Pan state
         this.lastCenter = { x: 0, y: 0 };
@@ -109,15 +110,20 @@ export class GestureController {
             this.lastMoveTime = performance.now();
             this.velocity = { x: 0, y: 0 };
             this.state = 'pan';
+            this.gestureStarted = false; // Reset - gesture starts on first movement
 
-            if (this.callbacks.onGestureStart) {
-                this.callbacks.onGestureStart();
-            }
+            // Don't call onGestureStart here - wait for actual movement
+            // This prevents quality degradation when just touching without moving
 
         } else if (touchCount === 2) {
             // Two touches - switch to pinch
             this.state = 'pinch';
             this.initPinch();
+            // For pinch, start gesture immediately since two fingers = intentional gesture
+            if (this.callbacks.onGestureStart && !this.gestureStarted) {
+                this.gestureStarted = true;
+                this.callbacks.onGestureStart();
+            }
         }
     }
 
@@ -135,8 +141,18 @@ export class GestureController {
         }
 
         if (this.state === 'pan' && this.touches.size === 1) {
+            // Start gesture on first actual movement (not just touch)
+            if (!this.gestureStarted && this.callbacks.onGestureStart) {
+                this.gestureStarted = true;
+                this.callbacks.onGestureStart();
+            }
             this.handlePan();
         } else if (this.state === 'pinch' && this.touches.size === 2) {
+            // Start gesture on first pinch movement if not already started
+            if (!this.gestureStarted && this.callbacks.onGestureStart) {
+                this.gestureStarted = true;
+                this.callbacks.onGestureStart();
+            }
             this.handlePinch();
         }
     }
@@ -193,6 +209,7 @@ export class GestureController {
         this.touches.clear();
         this.state = 'idle';
         this.velocity = { x: 0, y: 0 };
+        this.gestureStarted = false;
 
         if (this.momentumFrame) {
             cancelAnimationFrame(this.momentumFrame);
@@ -289,7 +306,9 @@ export class GestureController {
                 this.callbacks.onRotate(rotationDelta, center.x, center.y);
             }
 
-            // Then apply zoom
+            // Apply zoom centered on the pinch center (midpoint between two fingers)
+            // This ensures the zoom happens at the location where the user is pinching,
+            // not at the center of the screen
             if (this.callbacks.onZoom && Math.abs(scale - 1) > 0.001) {
                 this.callbacks.onZoom(scale, center.x, center.y);
             }
@@ -365,6 +384,7 @@ export class GestureController {
     endGesture() {
         this.state = 'idle';
         this.momentumFrame = null;
+        this.gestureStarted = false; // Reset gesture state
 
         if (this.callbacks.onGestureEnd) {
             this.callbacks.onGestureEnd();
@@ -399,18 +419,16 @@ export class GestureController {
             this.lastMoveTime = performance.now();
             this.velocity = { x: 0, y: 0 };
             this.state = 'pan';
+            this.gestureStarted = false; // Reset - gesture starts on first movement
 
-            if (this.callbacks.onGestureStart) {
-                this.callbacks.onGestureStart();
-            }
+            // Don't call onGestureStart here - wait for actual movement
         } else if (e.button === 2) { // Right button - rotate
             this.mouseDownPos = { x: e.clientX, y: e.clientY };
             this.lastCenter = { x: e.clientX, y: e.clientY };
             this.state = 'rotate';
+            this.gestureStarted = false; // Reset - gesture starts on first movement
 
-            if (this.callbacks.onGestureStart) {
-                this.callbacks.onGestureStart();
-            }
+            // Don't call onGestureStart here - wait for actual movement
         }
     }
 
@@ -425,6 +443,12 @@ export class GestureController {
         const dy = e.clientY - this.lastCenter.y;
 
         if (this.state === 'pan') {
+            // Start gesture on first actual movement (not just mouse down)
+            if (!this.gestureStarted && this.callbacks.onGestureStart) {
+                this.gestureStarted = true;
+                this.callbacks.onGestureStart();
+            }
+
             // Calculate velocity for momentum
             const now = performance.now();
             const dt = now - this.lastMoveTime;
@@ -440,6 +464,11 @@ export class GestureController {
                 this.callbacks.onPan(dx, dy);
             }
         } else if (this.state === 'rotate') {
+            // Start gesture on first actual rotation movement
+            if (!this.gestureStarted && this.callbacks.onGestureStart) {
+                this.gestureStarted = true;
+                this.callbacks.onGestureStart();
+            }
             // Rotate based on vertical drag
             // Drag up = clockwise (positive angle), drag down = counter-clockwise (negative)
             const rotationSensitivity = 0.01; // radians per pixel

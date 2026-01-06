@@ -86,9 +86,12 @@ export class ViewState {
 
     /**
      * Zoom centered on a screen point
-     * @param {number} factor - Zoom factor (>1 = zoom in)
-     * @param {number} screenX - Screen X coordinate
-     * @param {number} screenY - Screen Y coordinate
+     * This method ensures the point at (screenX, screenY) stays visually fixed during zoom
+     * Used for pinch-to-zoom gestures where the zoom should center on the pinch location
+     * 
+     * @param {number} factor - Zoom factor (>1 = zoom in, <1 = zoom out)
+     * @param {number} screenX - Screen X coordinate of the zoom center (e.g., pinch center)
+     * @param {number} screenY - Screen Y coordinate of the zoom center (e.g., pinch center)
      */
     zoomAt(factor, screenX, screenY) {
         const oldZoom = this.zoom;
@@ -96,22 +99,25 @@ export class ViewState {
 
         // Update zoom
         this.zoomLog += Math.log2(factor);
-        // Clamp zoom to reasonable range (0.001x to 10^12x)
+        // Clamp zoom to reasonable range (0.001x to 10^100x with deep zoom)
         // Allow zooming out to see more of the fractal (negative zoomLog = zoom < 1x)
-        this.zoomLog = Math.max(-10, Math.min(40, this.zoomLog));
+        // With perturbation theory, we can zoom much deeper (zoomLog 100 ≈ 10^30)
+        this.zoomLog = Math.max(-10, Math.min(100, this.zoomLog));
         this.zoom = Math.pow(2, this.zoomLog);
 
-        // Calculate the point in fractal space that should stay fixed
+        // Calculate the fractal-space offset of the screen point at the OLD zoom level
+        // This is the point in fractal space that should remain visually fixed
         const scale = 2.0 / (oldZoom * minDim);
         const fx = (screenX - this.screenWidth / 2) * scale;
         const fy = -(screenY - this.screenHeight / 2) * scale;
 
-        // Adjust center to keep that point stationary (split delta to preserve precision)
+        // Adjust center to keep that fractal point stationary during zoom
+        // Formula: if zooming by factor f, move center by p*(1 - 1/f) to keep point p fixed
         const adjust = 1 - 1 / factor;
         this.centerX = this.dsAdd(this.centerX, this.dsSplit(fx * adjust));
         this.centerY = this.dsAdd(this.centerY, this.dsSplit(fy * adjust));
 
-        // Renormalize
+        // Renormalize to prevent precision loss
         this.centerX = this.dsRenorm(this.centerX);
         this.centerY = this.dsRenorm(this.centerY);
     }

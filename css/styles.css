@@ -456,6 +456,34 @@ body {
     visibility: hidden;
 }
 
+/* Zoom Indicator */
+#zoom-indicator {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    top: max(16px, env(safe-area-inset-top));
+    padding: 8px 16px;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.875rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    user-select: none;
+    z-index: 100;
+    transition: opacity 0.2s;
+}
+
+#zoom-indicator.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* Info Overlay */
 .info-overlay {
     position: fixed;

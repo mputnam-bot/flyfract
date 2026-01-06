@@ -222,6 +222,11 @@ export class UIControls {
 
         // Store hide time to prevent immediate re-show
         this.lastHideTime = Date.now();
+
+        // Notify callback if registered
+        if (this.onPhotoModeChange) {
+            this.onPhotoModeChange(true);
+        }
     }
 
     /**
@@ -237,6 +242,11 @@ export class UIControls {
         }
         this.visible = true;
         this.allHidden = false;
+
+        // Notify callback if registered
+        if (this.onPhotoModeChange) {
+            this.onPhotoModeChange(false);
+        }
     }
 
     /**

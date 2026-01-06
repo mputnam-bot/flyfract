@@ -109,6 +109,11 @@ export class FractalManager {
         this.currentType = 'mandelbrot';
         this.juliaPresetIndex = 1; // Start with Spiral
         this.juliaC = JULIA_PRESETS[1].c;
+
+        // Deep zoom shader (separate from regular Mandelbrot)
+        this.deepZoomProgram = null;
+        this.deepZoomUniforms = null;
+        this.useDeepZoom = false;
     }
 
     /**
@@ -116,7 +121,8 @@ export class FractalManager {
      */
     async loadAll(onProgress) {
         const types = Object.keys(FRACTAL_TYPES);
-        const total = types.length;
+        // +1 for deep zoom shader
+        const total = types.length + 1;
         let loaded = 0;
 
         const uniformList = [
@@ -132,6 +138,16 @@ export class FractalManager {
             'u_colorC',
             'u_colorD',
             'u_isRainbow'
+        ];
+
+        // Deep zoom shader has additional uniforms
+        const deepZoomUniformList = [
+            ...uniformList,
+            'u_deepZoomEnabled',
+            'u_refPoint',
+            'u_orbitTexture',
+            'u_orbitTextureSize',
+            'u_orbitLength'
         ];
 
         for (const type of types) {
@@ -151,13 +167,72 @@ export class FractalManager {
                 throw new Error(`Failed to load shader for ${type}: ${error.message}`);
             }
         }
+
+        // Load deep zoom shader
+        try {
+            console.log('Loading deep zoom shader...');
+            const deepFragmentSource = await loadShaderSource('shaders/mandelbrot_deep.glsl');
+            console.log('Deep zoom shader source loaded, length:', deepFragmentSource.length);
+
+            this.deepZoomProgram = createProgram(this.gl, this.vertexSource, deepFragmentSource);
+            console.log('Deep zoom program created:', this.deepZoomProgram);
+
+            this.deepZoomUniforms = getUniformLocations(this.gl, this.deepZoomProgram, deepZoomUniformList);
+            console.log('Deep zoom uniforms:', Object.keys(this.deepZoomUniforms).filter(k => this.deepZoomUniforms[k] !== null));
+
+            console.log('%c Deep zoom shader compiled successfully!', 'background: green; color: white;');
+
+            loaded++;
+            if (onProgress) {
+                onProgress(loaded / total);
+            }
+        } catch (error) {
+            console.error('%c Failed to load deep zoom shader!', 'background: red; color: white;');
+            console.error('Error:', error.message);
+            console.error('Stack:', error.stack);
+            // Don't throw - app can work without deep zoom
+            this.deepZoomProgram = null;
+            this.deepZoomUniforms = null;
+        }
     }
 
     /**
      * Get current program and uniforms
+     * Returns deep zoom shader if enabled and available for Mandelbrot
      */
     getCurrent() {
+        // Use deep zoom shader for Mandelbrot when enabled
+        if (this.useDeepZoom && this.currentType === 'mandelbrot' && this.deepZoomProgram) {
+            return {
+                program: this.deepZoomProgram,
+                uniforms: this.deepZoomUniforms,
+                isDeepZoom: true
+            };
+        }
         return this.programs.get(this.currentType);
+    }
+
+    /**
+     * Check if deep zoom is available
+     */
+    hasDeepZoom() {
+        return this.deepZoomProgram !== null;
+    }
+
+    /**
+     * Enable or disable deep zoom mode
+     */
+    setDeepZoom(enabled) {
+        this.useDeepZoom = enabled && this.hasDeepZoom();
+        return this.useDeepZoom;
+    }
+
+    /**
+     * Check if deep zoom should be used for current fractal type
+     */
+    supportsDeepZoom() {
+        // Currently only Mandelbrot supports deep zoom
+        return this.currentType === 'mandelbrot' && this.hasDeepZoom();
     }
 
     /**
