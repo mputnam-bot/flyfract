@@ -363,28 +363,32 @@ export class AnimationOrchestrator {
 
 /**
  * Animate zoom with smooth interpolation (uses orchestrator)
+ * Zooms in and recenters the view so the tapped point ends up at the screen center
  */
-export function animateZoomWithOrchestrator(orchestrator, viewState, targetZoom, centerX, centerY, duration = 300, onUpdate, onComplete) {
+export function animateZoomWithOrchestrator(orchestrator, viewState, targetZoom, tapX, tapY, duration = 300, onUpdate, onComplete) {
     const startZoom = viewState.zoom;
-    const startCenterX = viewState.centerX.hi;
-    const startCenterY = viewState.centerY.hi;
-
-    // Calculate target center to keep the zoom point stationary
+    const startCenterX = viewState.centerX;
+    const startCenterY = viewState.centerY;
     const minDim = Math.min(viewState.screenWidth, viewState.screenHeight);
     const screenCenterX = viewState.screenWidth / 2;
     const screenCenterY = viewState.screenHeight / 2;
-
-    const offsetX = (centerX - screenCenterX);
-    const offsetY = (centerY - screenCenterY);
-
-    const startScale = 2.0 / startZoom;
-    const endScale = 2.0 / targetZoom;
-
-    const fractalX = offsetX * startScale / minDim;
-    const fractalY = -offsetY * startScale / minDim;
-
-    const targetCenterX = startCenterX + fractalX * (1 - startScale / endScale);
-    const targetCenterY = startCenterY + fractalY * (1 - startScale / endScale);
+    
+    // Calculate the fractal-space point that corresponds to the tap location at start zoom
+    const startScale = 2.0 / (startZoom * minDim);
+    const fractalX = (tapX - screenCenterX) * startScale;
+    const fractalY = -(tapY - screenCenterY) * startScale;
+    
+    // The absolute fractal coordinate of the tapped point
+    const tappedFractalX = startCenterX.hi + fractalX;
+    const tappedFractalY = startCenterY.hi + fractalY;
+    
+    // At target zoom, we want this fractal point to be at screen center
+    // At screen center, the fractal offset is 0, so the center should be the tapped point
+    const targetCenterXHi = tappedFractalX;
+    const targetCenterYHi = tappedFractalY;
+    
+    const startLog = Math.log2(startZoom);
+    const endLog = Math.log2(targetZoom);
 
     return orchestrator.animate({
         from: 0,
@@ -393,16 +397,24 @@ export function animateZoomWithOrchestrator(orchestrator, viewState, targetZoom,
         easing: 'easeOutCubic',
         onUpdate: (_, progress) => {
             // Interpolate zoom logarithmically for smooth feel
-            const startLog = Math.log2(startZoom);
-            const endLog = Math.log2(targetZoom);
             const currentLog = startLog + (endLog - startLog) * progress;
-
-            viewState.zoom = Math.pow(2, currentLog);
+            const currentZoom = Math.pow(2, currentLog);
+            
+            viewState.zoom = currentZoom;
             viewState.zoomLog = currentLog;
 
-            // Interpolate center
-            viewState.centerX.hi = startCenterX + (targetCenterX - startCenterX) * progress;
-            viewState.centerY.hi = startCenterY + (targetCenterY - startCenterY) * progress;
+            // Interpolate center smoothly (preserving double-precision structure)
+            // This will move the tapped point toward the screen center as we zoom
+            const currentCenterXHi = startCenterX.hi + (targetCenterXHi - startCenterX.hi) * progress;
+            const currentCenterYHi = startCenterY.hi + (targetCenterYHi - startCenterY.hi) * progress;
+            
+            // Update center using dsSplit to preserve precision
+            viewState.centerX = viewState.dsSplit(currentCenterXHi);
+            viewState.centerY = viewState.dsSplit(currentCenterYHi);
+            
+            // Renormalize periodically
+            viewState.centerX = viewState.dsRenorm(viewState.centerX);
+            viewState.centerY = viewState.dsRenorm(viewState.centerY);
 
             if (onUpdate) onUpdate();
         },
